@@ -51,11 +51,11 @@ long computeT( long t )
 	long v;
         /* put your algoRHYTHM in here... */
 	/* well, it's really more of an equation, but whatever */
-/*
         v = (( t >> 10 ) & 42) * t;
+/*
 	v = t&t>>8;
-*/
 	v = (t*5&t>>7)|(t*3&t>>10);
+*/
 
         return (v & 0x0ff);
 }
@@ -110,26 +110,39 @@ static int bytebeatCallback( const void *inputBuffer, void *outputBuffer,
 
 /* ********************************************************************** */
 
+#define kColorHudA	(1)
+#define kColorHudB	(2)
+#define kColorFrame	(3)
+#define kColorFrameT	(4)
+#define kColorPixel	(5)
+#define kColorLine	(6)
+#define kColorLineSel	(7)
+
 void initScreen( void )
 {
 	initscr();
 	cbreak();
 	noecho();
 	timeout( 0 );
+	curs_set( 0 );
 
 	nonl();
 	intrflush( stdscr, FALSE );
 	keypad( stdscr, TRUE );
 
-
 	start_color();
-	init_pair( 1, COLOR_YELLOW, COLOR_BLACK );
-	init_pair( 2, COLOR_GREEN, COLOR_GREEN );
-	init_pair( 3, COLOR_CYAN, COLOR_CYAN );
+	init_pair( kColorHudA, COLOR_WHITE, COLOR_BLACK );
+	init_pair( kColorHudB, COLOR_YELLOW, COLOR_BLACK );
+	init_pair( kColorFrame, COLOR_BLUE, COLOR_BLUE );
+	init_pair( kColorFrameT, COLOR_CYAN, COLOR_BLACK );
+	init_pair( kColorPixel, COLOR_GREEN, COLOR_GREEN );
+	init_pair( kColorLine, COLOR_BLUE, COLOR_BLACK );
+	init_pair( kColorLineSel, COLOR_YELLOW, COLOR_BLACK );
 }
 
 void deinitScreen( void )
 {
+	curs_set( 1 );
 	endwin();
 }
 
@@ -148,15 +161,142 @@ void volumeUp( void )
 	if( volume > 1.0 ) volume = 1.0;
 }
 
+
+/* ********************************************************************** */
+
+
+void showHUD( int mx, int my )
+{
+	/* draw some stats */
+	/*attron( A_BOLD ); */
+/*
+	attron( COLOR_PAIR( kColorHudA ) );
+	move( 0, 0 );
+	printw( "Time: %ld", t );
+	attroff( COLOR_PAIR( kColorHudA ) );
+*/
+
+	attron( COLOR_PAIR( kColorHudB ) );
+	move( 0, 0 );
+	printw( "Vol: %0.2f", volume );
+	/*attroff( A_BOLD );*/
+	attroff( COLOR_PAIR( kColorHudB ) );
+}
+
+WINDOW * vw;
+int vww, vwh;
+
+void showVis( int mx, int my )
+{
+	int hp;
+
+	if( !vw ) {
+		vww = mx;
+		vwh = 20;
+		vw = newwin( vwh, vww, 1, 0);
+	}
+
+	/* visualizer */
+	wclear( vw );
+	wattron( vw, COLOR_PAIR( kColorFrame ) );
+	wborder(vw, '|', '|', '-', '-', '+', '+', '+', '+');
+	wattroff( vw, COLOR_PAIR( kColorFrame ) );
+
+	if( displayBuffer ) {
+		wattron( vw, COLOR_PAIR( kColorPixel ) );
+		for( hp = 1; hp < vww-1 ; hp++)
+		{
+			float px = (float)(hp-1)/(float)(vww-1);
+			float py = displayBuffer[(int)(px*bufferSize)];
+			int y = vwh - 2 - (int) ((vwh-2) * py);
+			wmove( vw, y, hp );
+			wprintw( vw, "-" );
+		}
+		wattroff( vw, COLOR_PAIR( kColorPixel ) );
+	}
+
+	/* title, status */
+	wattron( vw, COLOR_PAIR( kColorFrameT ));
+	wmove( vw, 0, 4 );
+	wprintw( vw, " Visualizer ");
+	wmove( vw, 0, vww-14 );
+	wprintw( vw, " t=%ld ", t );
+	wattroff( vw, COLOR_PAIR( kColorFrameT ));
+
+	wrefresh( vw );
+}
+
+
+WINDOW * ew;
+int eww, ewh;
+
+int eline = 0;
+
+void showEdit( int mx, int my, int yp )
+{
+	int l;
+
+	if( !ew ) {
+		eww = mx;
+		ewh = 18;
+		ew = newwin( ewh, eww, yp, 0 );
+	}
+
+	wclear( ew );
+	wattron( ew, COLOR_PAIR( kColorFrame ) );
+	wborder(ew, '|', '|', '-', '-', '+', '+', '+', '+');
+	wattroff( ew, COLOR_PAIR( kColorFrame ) );
+
+	/* line numbering */
+	for( l=0; l<16 ; l++ )
+	{
+		if( l == eline ) {
+			wattron( ew, COLOR_PAIR( kColorLineSel ));
+		} else {
+			wattron( ew, COLOR_PAIR( kColorLine ));
+		}
+		wmove( ew, 1+l, 2 );
+		wprintw( ew, "%02d:", l );
+		if( l == eline ) {
+			wattroff( ew, COLOR_PAIR( kColorLineSel ));
+		} else {
+			wattroff( ew, COLOR_PAIR( kColorLine ));
+		}
+	}
+
+
+	/* title, status */
+	wattron( ew, COLOR_PAIR( kColorFrameT ));
+	wmove( ew, 0, 4 );
+	wprintw( ew, " Editor " );
+	wattroff( ew, COLOR_PAIR( kColorFrameT ));
+
+	wrefresh( ew );
+}
+
+
+void handleEditorKey( int ch )
+{
+	if( ch == KEY_DOWN ) { 
+		eline++;
+		if( eline > 15 ) eline = 0;
+	}
+	if( ch == KEY_UP ) {
+		eline--;
+		if( eline < 0 ) eline = 15;
+	}
+}
+
+
+
+/* ********************************************************************** */
+
 int main( int argc, char ** argv )
 {
 	int ch;
 	int done = 0;
-	int hp;
 	int mx, my;
 
-	WINDOW * vw;
-	int vww, vwh;
 
 	PaStream * stream;
 	PaError err;
@@ -168,18 +308,14 @@ int main( int argc, char ** argv )
 
 	initScreen();
 
-	getmaxyx( stdscr, my, mx );
 
         /* start playback */
         if( soundStart( stream ) == paNoError )
         {
 	}
 
-	timeout( 0 );
+	getmaxyx( stdscr, my, mx );
 
-	vww = 64;
-	vwh = 32;
-	vw = newwin( vwh, vww, 2, 1);
 
 	while( !done )
 	{
@@ -187,38 +323,16 @@ int main( int argc, char ** argv )
 		if( ch == -1 )
 		{
 			/*clear();*/
-			wclear( vw );
-			/* draw some stats */
-			/*attron( A_BOLD ); */
-			attron( COLOR_PAIR(1) );
-			move( 0, 0 );
-			printw( "Time: %ld    Volume: %0.2f", t, volume );
-			attroff( COLOR_PAIR(1) );
-			/*attroff( A_BOLD );*/
+			showVis( mx, my );
+			showHUD( mx, my );
+			showEdit( mx, my, 23 );
 
-			/* visualizer */
-			if( displayBuffer ) {
-				wattron( vw, COLOR_PAIR(3) );
-				wborder(vw, '|', '|', '-', '-', '+', '+', '+', '+');
-				wattroff( vw, COLOR_PAIR(3) );
-
-				wattron( vw, COLOR_PAIR(2) );
-				for( hp = 1; hp < vww-2 ; hp++)
-				{
-					float px = (float)(hp-1)/(float)(vww-2);
-					float py = displayBuffer[(int)(px*bufferSize)];
-					int y = vwh - 2 - (int) ((vwh-2) * py);
-					wmove( vw, y, hp );
-					wprintw( vw, "-" );
-				}
-				wattroff( vw, COLOR_PAIR(2) );
-			}
-
-
-			wrefresh(vw);
 			refresh(); 
-			Pa_Sleep(100);
+			Pa_Sleep(50);
 		}
+
+		handleEditorKey( ch );
+
 		if( ch == 'V' ) volumeUp();
 		if( ch == 'v' ) volumeDown();
 		if( ch == 'q' )
