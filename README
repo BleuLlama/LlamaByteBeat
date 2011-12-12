@@ -1,0 +1,30 @@
+
+LlamaBeat
+bytebeat music composition software for your CLI
+Scott Lawrence (BleuLlama/@yorgle/yorgle@gmail.com)
+2011-DEC
+
+
+Pre-reqs:
+	- C compiler.  Duh.
+	- Curses/NCurses (usually already installed)
+	- PortAudio library installed properly
+		http://www.portaudio.com/
+
+Get all of that, then just type 'make'
+
+You'll end up with some stuff:
+
+	./simple	portAudio example modified to play a bytebeat tune
+			no visualizer
+
+	./lbb		the gold.  the curses-based app.
+
+Currently, just type ./lb, and you'll see a tune displaying in it.
+
+Future:
+
+	./lbb glitch://song!aa!Ddad
+
+or
+	./lbb song!aa!Ddad
