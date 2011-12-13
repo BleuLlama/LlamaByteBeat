@@ -114,6 +114,14 @@ long glitchEvaluate( pGlitch * pg, long t );
 int glitchCountUseTokens( pGlitch * pg );
 
 
+/* glitchLineToBuffer
+ *
+ *	pretty-text a line to a buffer
+ *	returns the line number if found, -1 if not found
+ */
+int glitchLineToBuffer( pGlitch * pg, int line, char * buf, int maxBuf );
+
+
 /* glitchDump
  *
  *	Pretty-print the passed in glitch to stdout

@@ -35,6 +35,7 @@
 #include <curses.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 #include "paHelper.h"
 #include "glitch.h"
 
@@ -57,11 +58,16 @@ long computeT( long t )
 	
         /* put your algoRHYTHM in here... */
 	/* well, it's really more of an equation, but whatever */
-        v = (( t >> 10 ) & 42) * t;
 /*
+        v = (( t >> 10 ) & 42) * t;
 	v = t&t>>8;
 	v = (t*5&t>>7)|(t*3&t>>10);
 */
+	if( !theGlitch ) {
+		v = 42;
+	} else {
+		v = glitchEvaluate( theGlitch, t );
+	}
 
         return (v & 0x0ff);
 }
@@ -93,13 +99,8 @@ static int bytebeatCallback( const void *inputBuffer, void *outputBuffer,
         for( i=0; i<framesPerBuffer/2; i++ )
         {
                 /* this returns a value 0..255, we need floats */
-		if( !theGlitch ) {
-			v = 42;
-		} else {
-			v = glitchEvaluate( theGlitch, t+i );
-		}
 
-                /*v = computeT( t+i ); */
+                v = computeT( t+i );
                 v /= 255.0;
 
 		*db++ = v;
