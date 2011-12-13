@@ -73,7 +73,7 @@ long computeT( long t )
 }
 
 
-float * displayBuffer = NULL;
+uint8_t * displayBuffer = NULL;
 
 static int bytebeatCallback( const void *inputBuffer, void *outputBuffer,
                            unsigned long framesPerBuffer,
@@ -82,15 +82,15 @@ static int bytebeatCallback( const void *inputBuffer, void *outputBuffer,
                            void *userData )
 {
         /* Cast data passed through stream to our structure. */
-        float *out = (float*)outputBuffer;
-	float *db = displayBuffer;
+        uint8_t *out = (uint8_t*)outputBuffer;
+	uint8_t *db = displayBuffer;
         unsigned int i;
-        float v;
+        uint8_t v;
 
         (void) inputBuffer; /* Prevent unused variable warning. */
 
 	if( !displayBuffer ) {
-		displayBuffer = (float *)calloc( framesPerBuffer, sizeof( float ) );
+		displayBuffer = (uint8_t *)calloc( framesPerBuffer, sizeof( uint8_t ) );
 		bufferSize = framesPerBuffer;
 	}
 
@@ -98,16 +98,13 @@ static int bytebeatCallback( const void *inputBuffer, void *outputBuffer,
 
         for( i=0; i<framesPerBuffer/2; i++ )
         {
-                /* this returns a value 0..255, we need floats */
+                v = (uint8_t)computeT( t+i );
 
-                v = computeT( t+i );
-                v /= 255.0;
-
-		*db++ = v;
+		*db++ = v; 
 		*db++ = v;
 
 		/* adjust volume for actual output only */
-		v *= volume;
+		v = (uint8_t)( (float) v * (float) volume );
 
                 *out++ = v;
                 *out++ = v;
@@ -132,9 +129,13 @@ static int bytebeatCallback( const void *inputBuffer, void *outputBuffer,
 #define kColorHudB	(2)
 #define kColorFrame	(3)
 #define kColorFrameT	(4)
-#define kColorPixel	(5)
+#define kColorVisPixel	(5)
 #define kColorLine	(6)
 #define kColorLineSel	(7)
+
+#define kColorVisGrn	(kColorVisPixel)
+#define kColorVisYel	(8)
+#define kColorVisRed	(9)
 
 void initScreen( void )
 {
@@ -153,9 +154,11 @@ void initScreen( void )
 	init_pair( kColorHudB, COLOR_YELLOW, COLOR_BLACK );
 	init_pair( kColorFrame, COLOR_BLUE, COLOR_BLUE );
 	init_pair( kColorFrameT, COLOR_CYAN, COLOR_BLACK );
-	init_pair( kColorPixel, COLOR_GREEN, COLOR_GREEN );
+	init_pair( kColorVisPixel, COLOR_GREEN, COLOR_GREEN );
 	init_pair( kColorLine, COLOR_BLUE, COLOR_BLACK );
 	init_pair( kColorLineSel, COLOR_YELLOW, COLOR_BLACK );
+	init_pair( kColorVisYel, COLOR_YELLOW, COLOR_YELLOW );
+	init_pair( kColorVisRed, COLOR_RED, COLOR_RED );
 }
 
 void deinitScreen( void )
@@ -207,7 +210,7 @@ void showHUD( int mx, int my )
 
 WINDOW * vw;
 int vww, vwh;
-int vis = 0;
+int vis = 1;
 
 void nextVis( void )
 {
@@ -232,41 +235,51 @@ void showVis( int mx, int my )
 	wattroff( vw, COLOR_PAIR( kColorFrame ) );
 
 	if( vis == 0 ) {
+		/* dotty display */
 		if( displayBuffer ) {
-			wattron( vw, COLOR_PAIR( kColorPixel ) );
+			wattron( vw, COLOR_PAIR( kColorVisPixel ) );
 			for( hp = 1; hp < vww-1 ; hp++)
 			{
 				float px = (float)(hp-1)/(float)(vww-1);
-				float py = displayBuffer[(int)(px*bufferSize)];
+				float py = (float)displayBuffer[(int)(px*bufferSize)] / 255.0;
 				int y = vwh - 2 - (int) ((vwh-2) * py);
 				wmove( vw, y, hp );
 				wprintw( vw, "-" );
 			}
-			wattroff( vw, COLOR_PAIR( kColorPixel ) );
+			wattroff( vw, COLOR_PAIR( kColorVisPixel ) );
 		}
+
 	} else if( vis == 1 ) {
+		/* vbars display */
 		if( displayBuffer ) {
-			wattron( vw, COLOR_PAIR( kColorPixel ) );
+			attr_t c;
 			for( hp = 1; hp < vww-1 ; hp++)
 			{
 				float px = (float)(hp-1)/(float)(vww-1);
-				float py = displayBuffer[(int)(px*bufferSize)];
+				float py = (float)displayBuffer[(int)(px*bufferSize)] / 255.0;
 				int hh = (int) ((vwh-2) * py);
-				int y = vwh - 2 - hh;
+				int y = (vwh - 2 - hh)/2;
 
+				if( py > 0.85 ) c = COLOR_PAIR( kColorVisRed );
+				else if( py > 0.70 ) c = COLOR_PAIR( kColorVisYel );
+				else c = COLOR_PAIR( kColorVisGrn );
+
+				if( hh < 1 ) hh = 1;
+
+				wattron( vw, c );
 				wmove( vw, y+1, hp );
 				wvline( vw, '#' , hh );
+				wattroff( vw, c );
 			}
-			wattroff( vw, COLOR_PAIR( kColorPixel ) );
 		}
 	}
 
 	/* title, status */
 	wattron( vw, COLOR_PAIR( kColorFrameT ));
 	wmove( vw, 0, 4 );
-	wprintw( vw, " Visualizer ");
-	wmove( vw, 0, vww-14 );
-	wprintw( vw, " t=%ld ", t );
+	wprintw( vw, " Visualizer: %s ", (vis == 0)? "Dot Waveform" : "Intensity Bars" );
+	wmove( vw, 0, vww-15 );
+	wprintw( vw, " t = %ld ", t );
 	wattroff( vw, COLOR_PAIR( kColorFrameT ));
 
 	/* wrefresh( vw ); */

@@ -65,7 +65,7 @@ PaStream * soundInit( PaStreamCallback * call, void * data )
 		err = Pa_OpenDefaultStream( &str,
 			0,		  /* no input channels */
 			1,		  /* mono output */
-			paFloat32,  /* 32 bit floating point output */
+			paUInt8, 	 /* 8 bit unsigned int */
 			16000,		/* 16000 samples per second */
 			512,		/* frames per buffer */
 			call,
