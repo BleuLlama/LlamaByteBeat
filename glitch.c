@@ -129,6 +129,12 @@ pGlitch* glitchParse( char * gstr )
 	char * ps;
 
 
+	if( !gstr ) 
+	{
+		fprintf( stderr, "No glitch specified\n");
+		return NULL;
+	}
+
 	/* check to see if there's a "glitch://" on the front,
 		skip it if there is.
 	*/
@@ -145,7 +151,8 @@ pGlitch* glitchParse( char * gstr )
 	/* seek to the first ! for the name */
 	ps = strchr( gstr, '!' );
 	if( ps == NULL ) {
-		printf( "Invalid format Error with name!\n" );
+		fprintf( stderr, "Invalid format Error with name!\n" );
+		fprintf( stderr, " (%s)\n", gstr );
 		glitchDestroy( pg );
 		return NULL;
 	}

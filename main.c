@@ -53,6 +53,7 @@
 long t = 0;
 long bufferSize = 1;
 float volume = 1.0;
+int enableVis = 1;
 
 pGlitch * theGlitch = NULL;
 int lastV;
@@ -312,19 +313,28 @@ void showVis( int mx, int my )
 {
 	int hp;
 
+
 	if( !vw ) {
 		vww = mx;
 		vwh = my-19;
 		vw = newwin( vwh, vww, 0, 0);
+
+	    wclear( vw );
+	    wattron( vw, COLOR_PAIR( kColorFrame ) );
+	    wborder(vw, '|', '|', '-', '-', '+', '+', '+', '+');
+	    wattroff( vw, COLOR_PAIR( kColorFrame ) );
 	}
 
-	/* visualizer */
-	wclear( vw );
-	wattron( vw, COLOR_PAIR( kColorFrame ) );
-	wborder(vw, '|', '|', '-', '-', '+', '+', '+', '+');
-	wattroff( vw, COLOR_PAIR( kColorFrame ) );
+	if( enableVis ) 
+	{
+	    wclear( vw );
+	    wattron( vw, COLOR_PAIR( kColorFrame ) );
+	    wborder(vw, '|', '|', '-', '-', '+', '+', '+', '+');
+	    wattroff( vw, COLOR_PAIR( kColorFrame ) );
 
-	if( vis == 0 ) {
+
+	    /* visualizer */
+	    if( vis == 0 ) {
 		/* dotty display */
 		if( displayBuffer ) {
 			wattron( vw, COLOR_PAIR( kColorVisPixel ) );
@@ -339,7 +349,7 @@ void showVis( int mx, int my )
 			wattroff( vw, COLOR_PAIR( kColorVisPixel ) );
 		}
 
-	} else if( vis == 1 ) {
+	    } else if( vis == 1 ) {
 		/* vbars display */
 		if( displayBuffer ) {
 			attr_t c;
@@ -362,12 +372,15 @@ void showVis( int mx, int my )
 				wattroff( vw, c );
 			}
 		}
+	    }
 	}
 
 	/* title, status */
 	wattron( vw, COLOR_PAIR( kColorFrameT ));
 	wmove( vw, 0, 4 );
-	wprintw( vw, " Visualizer: %s ", (vis == 0)? "Dot Waveform" : "Intensity Bars" );
+	wprintw( vw, " Visualizer: %s ", 
+			(!enableVis)?"Disabled" :
+			(vis == 0)? "Dot Waveform" : "Intensity Bars" );
 	wmove( vw, 0, vww-15 );
 	wprintw( vw, " t = %ld ", t );
 	wattroff( vw, COLOR_PAIR( kColorFrameT ));
@@ -398,12 +411,13 @@ void showEdit( int mx, int my )
 		eww = mx;
 		ewh = 18;
 		ew = newwin( ewh, eww, my-ewh, 0 );
-	}
 
-	/* wclear( ew ); */
-	wattron( ew, COLOR_PAIR( kColorFrame ) );
-	wborder(ew, '|', '|', '-', '-', '+', '+', '+', '+');
-	wattroff( ew, COLOR_PAIR( kColorFrame ) );
+		/* we don't really need to update this every frame */
+		/* wclear( ew ); */
+		wattron( ew, COLOR_PAIR( kColorFrame ) );
+		wborder(ew, '|', '|', '-', '-', '+', '+', '+', '+');
+		wattroff( ew, COLOR_PAIR( kColorFrame ) );
+	}
 
 	/* line numbering */
 	for( l=0; l<16 ; l++ )
@@ -494,6 +508,8 @@ void usage( char * pn )
 	fprintf( stderr, "    -full       print full info and exit\n" );
 	fprintf( stderr, "    -help       print thisinfo and exit\n" );
 	fprintf( stderr, "\n" );
+	fprintf( stderr, "    -novis      disable the visualizer\n" );
+	fprintf( stderr, "\n" );
 	fprintf( stderr, "Glitch:\n" );
 	fprintf( stderr, "  The glitch can be specified in a number of ways:\n" );
 	fprintf( stderr, "  glitch://foo!aa    full uri on the line\n" );
@@ -517,6 +533,11 @@ char * handleOptions( int argc, char ** argv )
 	}
 
 	for( ac = 1 ; ac<argc ; ac++ ) {
+printf( ">> %s\n", argv[ac] );
+		if( !strcmp( argv[ac], "-novis" )) {
+			enableVis = 0;
+		} else 
+
 		if( !strcmp( argv[ac], "-help" )) {
 			usage( argv[0] );
 			return NULL;
@@ -560,6 +581,7 @@ char * handleOptions( int argc, char ** argv )
 		}
 
 		else {
+printf( "GGG %s\n", argv[ac] );
 			return argv[ac];
 		}
 	}
@@ -609,7 +631,7 @@ int main( int argc, char ** argv )
 #endif
 
 	/* parse in the glitch */
-	theGlitch = glitchParse( argv[1] );
+	theGlitch = glitchParse( glstr );
 	if( !theGlitch ) {
 		fprintf( stderr, "Unable to parse glitch!\n" );
 		return -2;
