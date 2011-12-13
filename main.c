@@ -483,6 +483,8 @@ int handleEditorKey( int ch )
  */
 void usage( char * pn )
 {
+	fprintf( stderr, "lbb v0.13  2011-Dec-13  Scott Lawrence, yorgle@gmail.com\n" );
+	fprintf( stderr, "\n" );
 	fprintf( stderr, "Usage: %s [option] [glitch]\n", pn );
 	fprintf( stderr, "\n" );
 	fprintf( stderr, "Options:\n" );
@@ -508,6 +510,11 @@ char * handleOptions( int argc, char ** argv )
 	int ac = 1;
 	int i;
 	char buf[512];
+
+	if( argc == 1 ) {
+		usage( argv[0] );
+		return NULL;
+	}
 
 	for( ac = 1 ; ac<argc ; ac++ ) {
 		if( !strcmp( argv[ac], "-help" )) {
