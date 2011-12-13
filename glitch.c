@@ -164,7 +164,7 @@ pGlitch* glitchParse( char * gstr )
 	while( *gstr ) {
 		v = *gstr++;
 
-		/* check for number (encoded as hex) */
+		/* check for number (encoded as hex -- decode it) */
 		if( v >= '0' && v <= '9' ) {
 			pg->tokens[pg->nTokens] <<= 4;
 			pg->tokens[pg->nTokens] += v - '0';
@@ -174,6 +174,7 @@ pGlitch* glitchParse( char * gstr )
 			pg->tokens[pg->nTokens] <<= 4;
 			pg->tokens[pg->nTokens] += v - 'A' + 10;
 			lastWasNumber = 1;
+
 		} else {
 			if( lastWasNumber ) {
 				pg->nTokens++;
@@ -204,34 +205,37 @@ char * glitchTokenToString( long t )
 {
 	switch( t )
 	{
-	case( 'a' ):	return "t";
+	case( 'a' ):	return "t";		/* OP_T */
 
-	case( 'd' ):	return "*";
-	case( 'e' ):	return "/";
-	case( 'f' ):	return "+";
-	case( 'g' ):	return "-";
+	case( 'b' ):	return "PUT";		/* OP_PUT */
+	case( 'c' ):	return "DROP";		/* OP_DROP */
 
-	case( 'h' ):	return "%";
-	case( 'j' ):	return "<<";
-	case( 'k' ):	return ">>";
+	case( 'd' ):	return "*";		/* OP_MUL */
+	case( 'e' ):	return "/";		/* OP_DIV */
+	case( 'f' ):	return "+";		/* OP_ADD */
+	case( 'g' ):	return "-";		/* OP_SUB */
 
-	case( 'l' ):	return "&";
-	case( 'm' ):	return "|";
-	case( 'n' ):	return "^";
+	case( 'h' ):	return "%";		/* OP_MOD */
+	case( 'j' ):	return "<<";		/* OP_LSHIFT */
+	case( 'k' ):	return ">>";		/* OP_RSHIFT */
 
-	case( 'o' ):	return "~";
+	case( 'l' ):	return "&";		/* OP_AND */
+	case( 'm' ):	return "|";		/* OP_OR */
+	case( 'n' ):	return "^";		/* OP_XOR */
 
-	case( 'p' ):	return "DUP";
-	case( 'q' ):	return "PICK";
-	case( 'r' ):	return "SWAP";
+	case( 'o' ):	return "~";		/* OP_NOT */
 
-	case( 's' ):	return "<";
-	case( 't' ):	return ">";
-	case( 'u' ):	return "=";
+	case( 'p' ):	return "DUP";		/* OP_DUP */
+	case( 'q' ):	return "PICK";		/* OP_PICK */
+	case( 'r' ):	return "SWAP";		/* OP_SWAP */
+
+	case( 's' ):	return "<";		/* OP_LT */
+	case( 't' ):	return ">";		/* OP_GT */
+	case( 'u' ):	return "=";		/* OP_EQ */
 
 	/* and for completeness... */
-	case( '!' ):	return "\\n";
-	case( '.' ):	return ".";
+	case( '!' ):	return "\\n";		/* OP_NOP */
+	case( '.' ):	return ".";		/* OP_NOP */
 	}
 	return "?UNK";
 }
@@ -277,6 +281,18 @@ long glitchPick( pGlitch *pg, long idx )
 }
 
 
+/* glitchPut
+ *
+ *	put an item off of the stack
+ */
+void glitchPut( pGlitch *pg, long idx, long v )
+{
+	if( !pg ) return;
+	idx = ( pg->sp - idx -1 ) & 0xff;
+	pg->stack[ idx ] = v;
+}
+
+
 /* glitchEvaluate
  *
  * 	evaluate the stored formula with the passed in 't'
@@ -292,20 +308,58 @@ long glitchEvaluate( pGlitch * pg, long t )
 
 	for(pp = 0 ; pp < pg->nTokens ; pp++ )
 	{
+		/* in the program array, numbers are stored as 0..FF */
+		/* tokens are stored as -1 * OP_TOKEN */
 		switch( pg->tokens[pp] * -1 )
 		{
-		case( 'a' ): glitchPush( pg, t ); break;
+		/* a - OP_T */
+		case( 'a' ):
+			glitchPush( pg, t );
+			break;
 
-		case( 'd' ): a = glitchPop( pg ); b = glitchPop( pg ); glitchPush( pg, a*b ); break;
+		/* b - OP_PUT */
+		case( 'b' ): 
+			a = glitchPop( pg );
+			b = glitchPop( pg );
+			glitchPush( pg, b ); /* put it back on the stack - no effect to it */
+			glitchPut( pg, b, a );
+			break;
+
+		/* c - OP_DROP */
+		case( 'c' ):
+			a = glitchPop( pg );
+			break;
+
+		/* d - OP_MUL */
+		case( 'd' ):
+			a = glitchPop( pg );
+			b = glitchPop( pg );
+			glitchPush( pg, a*b );
+			break;
+
+		/* e - OP_DIV */
 		case( 'e' ):
 			a = glitchPop( pg );
 			b = glitchPop( pg );
 			if( a > 0 ) glitchPush( pg, b/a );
 			else glitchPush( pg, 0 );
 			break;
-		case( 'f' ): a = glitchPop( pg ); b = glitchPop( pg ); glitchPush( pg, a+b ); break;
-		case( 'g' ): a = glitchPop( pg ); b = glitchPop( pg ); glitchPush( pg, a-b ); break;
 
+		/* f - OP_ADD */
+		case( 'f' ):
+			a = glitchPop( pg );
+			b = glitchPop( pg );
+			glitchPush( pg, a+b );
+			break;
+
+		/* g - OP_SUB */
+		case( 'g' ):
+			a = glitchPop( pg );
+			b = glitchPop( pg );
+			glitchPush( pg, a-b );
+			break;
+
+		/* h - OP_MOD */
 		case( 'h' ): 
 			a = glitchPop( pg );
 			b = glitchPop( pg );
@@ -313,6 +367,7 @@ long glitchEvaluate( pGlitch * pg, long t )
 			else glitchPush( pg, 0 );
 			break;
 
+		/* j - OP_LSHIFT */
 		case( 'j' ):
 			a = glitchPop( pg );
 			b = glitchPop( pg );
@@ -322,6 +377,8 @@ long glitchEvaluate( pGlitch * pg, long t )
 				glitchPush( pg, b );
 			}
 			break;
+
+		/* k - OP_RSHIFT */
 		case( 'k' ):
 			a = glitchPop( pg );
 			b = glitchPop( pg );
@@ -332,14 +389,47 @@ long glitchEvaluate( pGlitch * pg, long t )
 			}
 			break;
 
-		case( 'l' ): a = glitchPop( pg ); b = glitchPop( pg ); glitchPush( pg, a&b ); break;
-		case( 'm' ): a = glitchPop( pg ); b = glitchPop( pg ); glitchPush( pg, a|b ); break;
-		case( 'n' ): a = glitchPop( pg ); b = glitchPop( pg ); glitchPush( pg, b^a ); break;
+		/* l - OP_AND */
+		case( 'l' ):
+			a = glitchPop( pg );
+			b = glitchPop( pg );
+			glitchPush( pg, a&b );
+			break;
 
-		case( 'o' ): a = glitchPop( pg ); glitchPush( pg, ~a ); break;
+		/* m - OP_OR */
+		case( 'm' ):
+			a = glitchPop( pg );
+			b = glitchPop( pg );
+			glitchPush( pg, a|b );
+			break;
 
-		case( 'p' ): a = glitchPop( pg ); glitchPush( pg, a ); glitchPush( pg, a ); break;
-		case( 'q' ): a = glitchPop( pg ); glitchPush( pg, glitchPick( pg, a )); break;
+		/* n - OP_XOR */
+		case( 'n' ):
+			a = glitchPop( pg );
+			b = glitchPop( pg );
+			glitchPush( pg, b^a );
+			break;
+
+		/* o - OP_NOT */
+		case( 'o' ):
+			a = glitchPop( pg );
+			glitchPush( pg, ~a );
+			break;
+
+		/* p - OP_DUP */
+		case( 'p' ):
+			a = glitchPop( pg );
+			glitchPush( pg, a );
+			glitchPush( pg, a );
+			break;
+
+		/* q - OP_PICK */
+		case( 'q' ):
+			a = glitchPop( pg );
+			glitchPush( pg, glitchPick( pg, a ));
+			break;
+
+		/* r - OP_SWAP */
 		case( 'r' ):
 			a = glitchPop( pg );
 			b = glitchPop( pg );
@@ -347,18 +437,21 @@ long glitchEvaluate( pGlitch * pg, long t )
 			glitchPush( pg, b );
 			break;
 
+		/* s - OP_LT */
 		case( 's' ):
 			a = glitchPop( pg );
 			b = glitchPop( pg );
 			if( b<a ) glitchPush( pg, 0xffffffff );
 			else glitchPush( pg, 0 );
 			break;
+		/* t - OP_GT */
 		case( 't' ):
 			a = glitchPop( pg );
 			b = glitchPop( pg );
 			if( b>a ) glitchPush( pg, 0xffffffff );
 			else glitchPush( pg, 0 );
 			break;
+		/* u - OP_EQ */
 		case( 'u' ):
 			a = glitchPop( pg );
 			b = glitchPop( pg );
@@ -367,6 +460,7 @@ long glitchEvaluate( pGlitch * pg, long t )
 			break;
 
 		default:
+			/* it's a number, just push it */
 			if( pg->tokens[pp] >= 0 ) {
 				glitchPush( pg, pg->tokens[pp] );
 			}

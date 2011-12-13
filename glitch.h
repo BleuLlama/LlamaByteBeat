@@ -99,6 +99,13 @@ long glitchPop( pGlitch *pg );
 long glitchPick( pGlitch *pg, long idx );
 
 
+/* glitchPut
+ *
+ *	put an item onto the stack (overwrite)
+ */
+void glitchPut( pGlitch *pg, long idx, long v );
+
+
 /* glitchEvaluate
  *
  * 	evaluate the stored formula with the passed in 't'

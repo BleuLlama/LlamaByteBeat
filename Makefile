@@ -35,7 +35,7 @@ SRCS := main.c \
 	paHelper.c
 
 LDFLAGS += 
-CFLAGS += -G -Wall -pedantic
+CFLAGS += -Wall -pedantic
 LIBS += -lncurses -lportaudio
 INCS += 
 
