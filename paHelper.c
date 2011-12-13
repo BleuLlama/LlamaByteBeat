@@ -39,6 +39,7 @@
 
 /* NOTE: future change;  switch this over to allow for libSDL audio
 	ref: http://paste2.org/p/1817840
+	ref: http://www.libsdl.org/docs/html/sdlaudiospec.html
 */
 
 /* ********************************************************************** */

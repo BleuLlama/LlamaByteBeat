@@ -39,9 +39,18 @@ CFLAGS += -Wall -pedantic
 LIBS += -lncurses -lportaudio
 INCS += 
 
+export ARCH := $(shell uname)
+ifeq ($(ARCH),Darwin)
+LIBS += $(shell sdl-config --static-libs)
+else
+LIBS += 
+endif
+
+
+
 ################################################################################
 
-all: $(TARG) simple
+all: $(TARG) simple sdlsimple
 .PHONY: all
 
 ################################################################################
@@ -57,6 +66,13 @@ $(TARG): $(OBJS)
 TARGS += simple 
 
 simple: build/simple.o build/paHelper.o
+	@echo link $@
+	@$(CC) $(CFLAGS) $^ $(LDFLAGS) $(LIBS) -o $@
+
+
+TARGS += sdlsimple 
+
+sdlsimple: build/sdlsimple.o
 	@echo link $@
 	@$(CC) $(CFLAGS) $^ $(LDFLAGS) $(LIBS) -o $@
 
@@ -88,7 +104,3 @@ test: $(TARG)
 	./$(TARG) the_42_melody!aAk2Alad
 	./$(TARG) glitch://2muchop!1!0!aFFe6had!!aaadda4eg8k!aada2000eh!a400e3h2fqad80h!0!!2.1.2.1.4.1.2.1!2.1.2.1.4.1.3.2!!a400e10hqFf!q
 	./$(TARG) glitch://glitch4life!a1k1000.8eha80!a80dmlp0k1000.2dh!mre
-
-	
-
-	
