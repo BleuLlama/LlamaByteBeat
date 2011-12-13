@@ -47,9 +47,9 @@ long t = 0;
 long bufferSize = 1;
 float volume = 1.0;
 
-#undef SLOWUPDATE
-
 pGlitch * theGlitch = NULL;
+int lastV;
+int lastSp;
 
 long computeT( long t )
 {
@@ -113,6 +113,11 @@ static int bytebeatCallback( const void *inputBuffer, void *outputBuffer,
                 *out++ = v;
 
         }
+
+	/* for the visualizer, prime it with [0] */
+	lastV = computeT( 0 );
+	lastSp = theGlitch->sp;
+
         t=t+i;
         return 0;
 }
@@ -189,15 +194,26 @@ void showHUD( int mx, int my )
 	attroff( COLOR_PAIR( kColorHudA ) );
 */
 
+/*
 	attron( COLOR_PAIR( kColorHudB ) );
 	move( 0, 0 );
 	printw( "Vol: %0.2f", volume );
+*/
 	/*attroff( A_BOLD );*/
+/*
 	attroff( COLOR_PAIR( kColorHudB ) );
+*/
 }
 
 WINDOW * vw;
 int vww, vwh;
+int vis = 0;
+
+void nextVis( void )
+{
+	vis ++;
+	if( vis > 1 ) vis = 0;
+}
 
 void showVis( int mx, int my )
 {
@@ -205,8 +221,8 @@ void showVis( int mx, int my )
 
 	if( !vw ) {
 		vww = mx;
-		vwh = 20;
-		vw = newwin( vwh, vww, 1, 0);
+		vwh = my-19;
+		vw = newwin( vwh, vww, 0, 0);
 	}
 
 	/* visualizer */
@@ -215,17 +231,34 @@ void showVis( int mx, int my )
 	wborder(vw, '|', '|', '-', '-', '+', '+', '+', '+');
 	wattroff( vw, COLOR_PAIR( kColorFrame ) );
 
-	if( displayBuffer ) {
-		wattron( vw, COLOR_PAIR( kColorPixel ) );
-		for( hp = 1; hp < vww-1 ; hp++)
-		{
-			float px = (float)(hp-1)/(float)(vww-1);
-			float py = displayBuffer[(int)(px*bufferSize)];
-			int y = vwh - 2 - (int) ((vwh-2) * py);
-			wmove( vw, y, hp );
-			wprintw( vw, "-" );
+	if( vis == 0 ) {
+		if( displayBuffer ) {
+			wattron( vw, COLOR_PAIR( kColorPixel ) );
+			for( hp = 1; hp < vww-1 ; hp++)
+			{
+				float px = (float)(hp-1)/(float)(vww-1);
+				float py = displayBuffer[(int)(px*bufferSize)];
+				int y = vwh - 2 - (int) ((vwh-2) * py);
+				wmove( vw, y, hp );
+				wprintw( vw, "-" );
+			}
+			wattroff( vw, COLOR_PAIR( kColorPixel ) );
 		}
-		wattroff( vw, COLOR_PAIR( kColorPixel ) );
+	} else if( vis == 1 ) {
+		if( displayBuffer ) {
+			wattron( vw, COLOR_PAIR( kColorPixel ) );
+			for( hp = 1; hp < vww-1 ; hp++)
+			{
+				float px = (float)(hp-1)/(float)(vww-1);
+				float py = displayBuffer[(int)(px*bufferSize)];
+				int hh = (int) ((vwh-2) * py);
+				int y = vwh - 2 - hh;
+
+				wmove( vw, y+1, hp );
+				wvline( vw, '#' , hh );
+			}
+			wattroff( vw, COLOR_PAIR( kColorPixel ) );
+		}
 	}
 
 	/* title, status */
@@ -236,7 +269,8 @@ void showVis( int mx, int my )
 	wprintw( vw, " t=%ld ", t );
 	wattroff( vw, COLOR_PAIR( kColorFrameT ));
 
-	wrefresh( vw );
+	/* wrefresh( vw ); */
+	wnoutrefresh( vw );
 }
 
 
@@ -245,18 +279,19 @@ int eww, ewh;
 
 int eline = 0;
 
-void showEdit( int mx, int my, int yp )
+void showEdit( int mx, int my )
 {
 	int l;
+	int offs;
 	char buf[256];
 
 	if( !ew ) {
 		eww = mx;
 		ewh = 18;
-		ew = newwin( ewh, eww, yp, 0 );
+		ew = newwin( ewh, eww, my-ewh, 0 );
 	}
 
-	wclear( ew );
+	/* wclear( ew ); */
 	wattron( ew, COLOR_PAIR( kColorFrame ) );
 	wborder(ew, '|', '|', '-', '-', '+', '+', '+', '+');
 	wattroff( ew, COLOR_PAIR( kColorFrame ) );
@@ -288,13 +323,22 @@ void showEdit( int mx, int my, int yp )
 	wattron( ew, COLOR_PAIR( kColorFrameT ));
 	wmove( ew, 0, 4 );
 	wprintw( ew, " Editor " );
-	if( theGlitch && theGlitch->name && strlen( theGlitch->name )) {
-		wmove( ew, 0, 11 );
-		wprintw( ew, ": \"%s\" ", theGlitch->name );
+	offs = 25;
+	if( theGlitch ) {
+		if( theGlitch->name && strlen( theGlitch->name )) {
+			wmove( ew, 0, 11 );
+			wprintw( ew, ": \"%s\" ", theGlitch->name );
+			offs += strlen( theGlitch->name );
+		}
+
+		wmove( ew, 0, offs );
+		wprintw( ew, " (0x%02X)  -  Stack: %d  -  %d Tokens  ", lastV & 0x0ff, lastSp, glitchCountUseTokens( theGlitch ) );
+		
 	}
 	wattroff( ew, COLOR_PAIR( kColorFrameT ));
 
-	wrefresh( ew );
+	/* wrefresh( ew ); */
+	wnoutrefresh( ew );
 }
 
 
@@ -328,9 +372,6 @@ int main( int argc, char ** argv )
 	int ch;
 	int done = 0;
 	int mx, my;
-#ifdef SLOWUPDATE
-	int refresh = 1;
-#endif
 
 	if( argc != 2 ) {
 		fprintf( stderr, "Error: specify a glitch on the command line\n" );
@@ -361,38 +402,31 @@ int main( int argc, char ** argv )
         {
 	}
 
-	getmaxyx( stdscr, my, mx );
 
 
 
 	while( !done )
 	{
+		getmaxyx( stdscr, my, mx );
 		ch = getch();
-		if( ch == -1
-#ifdef SLOWUPDATE
-			&& refresh
-#endif
-			 )
+		if( ch == -1)
 		{
-#ifdef SLOWUPDATE
-			refresh = 0;
-#endif
 			/*clear();*/
 			showVis( mx, my );
 			showHUD( mx, my );
-			showEdit( mx, my, 23 );
+			showEdit( mx, my );
 
-			/*refresh(); */
+			doupdate();
 			Pa_Sleep(50);
 		}
-#ifdef SLOWUPDATE
-		if( ch >= ' ' && ch <= '~' ) refresh = 1;
-		refresh +=
-#endif
 		handleEditorKey( ch );
 
+		/*
 		if( ch == 'V' ) volumeUp();
 		if( ch == 'v' ) volumeDown();
+		*/
+
+		if( ch == 'v' ) nextVis();
 		if( ch == 'q' )
 		{
 			done = 1;
