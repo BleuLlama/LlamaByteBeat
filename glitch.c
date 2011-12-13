@@ -93,7 +93,7 @@ typedef struct pGlitch {
 	long tokens[kGlitchMaxSteps];
 	int nTokens;
 
-	long stack[256];
+	uint32_t stack[256];
 	int sp;
 } pGlitch;
 #endif
@@ -247,8 +247,6 @@ void glitchPush( pGlitch *pg, long v )
 
 	pg->stack[ pg->sp ] = v;
 	pg->sp++;
-	pg->sp &= 0xff; /* stay within 0..255 */
-
 }
 
 
@@ -261,9 +259,8 @@ long glitchPop( pGlitch *pg )
 	if( !pg ) return 0;
 
 	pg->sp--;
-	pg->sp &= 0xff;
 	
-	return 0xff & pg->stack[ pg->sp ];
+	return pg->stack[ pg->sp ];
 }
 
 
@@ -276,7 +273,7 @@ long glitchPick( pGlitch *pg, long idx )
 	if( !pg ) return 0;
 	idx = ( pg->sp - idx -1 ) & 0xff;
 
-	return 0xff & pg->stack[ idx ];
+	return pg->stack[ idx ];
 }
 
 

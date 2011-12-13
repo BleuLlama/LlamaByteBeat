@@ -31,6 +31,7 @@
 */
 
 
+#include <stdint.h>
 
 /* ********************************************************************** */
 
@@ -47,7 +48,7 @@ typedef struct pGlitch {
 	long tokens[kGlitchMaxSteps];
 	int nTokens;
 
-	long stack[256];
+	uint32_t stack[256];
 	int sp;
 } pGlitch;
 
