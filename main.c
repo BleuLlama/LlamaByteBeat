@@ -36,6 +36,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include "paHelper.h"
+#include "glitch.h"
 
 /* http://tldp.org/HOWTO/NCURSES-Programming-HOWTO/ */
 
@@ -45,10 +46,15 @@ long t = 0;
 long bufferSize = 1;
 float volume = 1.0;
 
+#undef SLOWUPDATE
+
+pGlitch * theGlitch = NULL;
 
 long computeT( long t )
 {
 	long v;
+
+	
         /* put your algoRHYTHM in here... */
 	/* well, it's really more of an equation, but whatever */
         v = (( t >> 10 ) & 42) * t;
@@ -87,7 +93,13 @@ static int bytebeatCallback( const void *inputBuffer, void *outputBuffer,
         for( i=0; i<framesPerBuffer/2; i++ )
         {
                 /* this returns a value 0..255, we need floats */
-                v = computeT( t+i );
+		if( !theGlitch ) {
+			v = 42;
+		} else {
+			v = glitchEvaluate( theGlitch, t+i );
+		}
+
+                /*v = computeT( t+i ); */
                 v /= 255.0;
 
 		*db++ = v;
@@ -235,6 +247,7 @@ int eline = 0;
 void showEdit( int mx, int my, int yp )
 {
 	int l;
+	char buf[256];
 
 	if( !ew ) {
 		eww = mx;
@@ -257,6 +270,11 @@ void showEdit( int mx, int my, int yp )
 		}
 		wmove( ew, 1+l, 2 );
 		wprintw( ew, "%02d:", l );
+	
+		glitchLineToBuffer( theGlitch, l, buf, 256 );
+		wmove( ew, 1+l, 7 );
+		wprintw( ew, "%s", buf );
+		
 		if( l == eline ) {
 			wattroff( ew, COLOR_PAIR( kColorLineSel ));
 		} else {
@@ -269,22 +287,32 @@ void showEdit( int mx, int my, int yp )
 	wattron( ew, COLOR_PAIR( kColorFrameT ));
 	wmove( ew, 0, 4 );
 	wprintw( ew, " Editor " );
+	if( theGlitch && theGlitch->name && strlen( theGlitch->name )) {
+		wmove( ew, 0, 11 );
+		wprintw( ew, ": \"%s\" ", theGlitch->name );
+	}
 	wattroff( ew, COLOR_PAIR( kColorFrameT ));
 
 	wrefresh( ew );
 }
 
 
-void handleEditorKey( int ch )
+int handleEditorKey( int ch )
 {
+	int ret = 0;
+
 	if( ch == KEY_DOWN ) { 
 		eline++;
 		if( eline > 15 ) eline = 0;
+		ret = 1;
 	}
 	if( ch == KEY_UP ) {
 		eline--;
 		if( eline < 0 ) eline = 15;
+		ret = 1;
 	}
+
+	return ret;
 }
 
 
@@ -293,19 +321,37 @@ void handleEditorKey( int ch )
 
 int main( int argc, char ** argv )
 {
+	PaStream * stream;
+	PaError err;
+
 	int ch;
 	int done = 0;
 	int mx, my;
+#ifdef SLOWUPDATE
+	int refresh = 1;
+#endif
 
+	if( argc != 2 ) {
+		fprintf( stderr, "Error: specify a glitch on the command line\n" );
+		return -2;
+	}
 
-	PaStream * stream;
-	PaError err;
 
 	stream = soundInit( bytebeatCallback, NULL );
 	if( !stream ) {
 		return -1;
 	}
 
+	theGlitch = glitchParse( argv[1] );
+	if( !theGlitch ) {
+		fprintf( stderr, "Unable to parse glitch!\n" );
+		return -2;
+	}
+
+/*
+		glitchDump( theGlitch );
+	return -1;
+*/
 	initScreen();
 
 
@@ -317,20 +363,31 @@ int main( int argc, char ** argv )
 	getmaxyx( stdscr, my, mx );
 
 
+
 	while( !done )
 	{
 		ch = getch();
-		if( ch == -1 )
+		if( ch == -1
+#ifdef SLOWUPDATE
+			&& refresh
+#endif
+			 )
 		{
+#ifdef SLOWUPDATE
+			refresh = 0;
+#endif
 			/*clear();*/
 			showVis( mx, my );
 			showHUD( mx, my );
 			showEdit( mx, my, 23 );
 
-			refresh(); 
+			/*refresh(); */
 			Pa_Sleep(50);
 		}
-
+#ifdef SLOWUPDATE
+		if( ch >= ' ' && ch <= '~' ) refresh = 1;
+		refresh +=
+#endif
 		handleEditorKey( ch );
 
 		if( ch == 'V' ) volumeUp();
@@ -344,5 +401,7 @@ int main( int argc, char ** argv )
 	deinitScreen();
 
 	err = soundDeinit( stream );
+
+	glitchDestroy( theGlitch );
 	return 0;
 }

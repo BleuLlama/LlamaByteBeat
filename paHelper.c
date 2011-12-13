@@ -37,6 +37,10 @@
 #include "portaudio.h"
 #include "paHelper.h"
 
+/* NOTE: future change;  switch this over to allow for libSDL audio
+	ref: http://paste2.org/p/1817840
+*/
+
 /* ********************************************************************** */
 
 void soundErrorTerminate( PaError err )
