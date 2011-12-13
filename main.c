@@ -36,10 +36,17 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include "paHelper.h"
+#include <unistd.h>
 #include "glitch.h"
 
-/* http://tldp.org/HOWTO/NCURSES-Programming-HOWTO/ */
+#ifdef USEPORTAUDIO
+#include "paHelper.h"
+#endif
+#ifdef USESDL
+#include "SDL/SDL.h"
+#include "SDL/SDL_audio.h"
+#endif
+
 
 /* ********************************************************************** */
 
@@ -49,13 +56,30 @@ float volume = 1.0;
 
 pGlitch * theGlitch = NULL;
 int lastV;
-int lastSp;
 
+uint8_t * displayBuffer = NULL; /* should be 512 bytes large */
+
+/* makeDisplayBuffer
+ *
+ *	allocate the space for the display buffer, if needed
+ */
+void makeDisplayBuffer( long framesPerBuffer )
+{
+	if( displayBuffer ) return;
+
+	displayBuffer = (uint8_t *)calloc( framesPerBuffer, sizeof( uint8_t ) );
+	bufferSize = framesPerBuffer;
+}
+
+
+/* computeT
+ *
+ *	pipe T through the glitch to get a result
+ */
 long computeT( long t )
 {
 	long v;
 
-	
         /* put your algoRHYTHM in here... */
 	/* well, it's really more of an equation, but whatever */
 /*
@@ -72,14 +96,26 @@ long computeT( long t )
         return (v & 0x0ff);
 }
 
+/* **************************************** */
 
-uint8_t * displayBuffer = NULL;
-
-static int bytebeatCallback( const void *inputBuffer, void *outputBuffer,
-                           unsigned long framesPerBuffer,
+/* bytebeatCallback
+ *
+ *	the callback that PortAudio or libSDL will use to ask us to
+ *	provide more audio dataz
+ */
+#ifdef USEPORTAUDIO
+/* PortAudio's version */
+static int bytebeatCallback( const void *inputBuffer, 
+			   void *outputBuffer,
+                           unsigned long len, /* framesPerBuffer, */
                            const PaStreamCallbackTimeInfo* timeInfo,
                            PaStreamCallbackFlags statusFlags,
                            void *userData )
+#endif
+#ifdef USESDL
+/* libSDL's version */
+static void bytebeatCallback( void * userData, Uint8 *outputBuffer, int len )
+#endif
 {
         /* Cast data passed through stream to our structure. */
         uint8_t *out = (uint8_t*)outputBuffer;
@@ -87,18 +123,17 @@ static int bytebeatCallback( const void *inputBuffer, void *outputBuffer,
         unsigned int i;
         uint8_t v;
 
+#ifdef USEPORTAUDIO
         (void) inputBuffer; /* Prevent unused variable warning. */
+#endif
 
-	if( !displayBuffer ) {
-		displayBuffer = (uint8_t *)calloc( framesPerBuffer, sizeof( uint8_t ) );
-		bufferSize = framesPerBuffer;
-	}
-
+	makeDisplayBuffer( len );
 	db = displayBuffer;
 
-        for( i=0; i<framesPerBuffer/2; i++ )
+        for( i=0; i<len/2; i++ )
         {
                 v = (uint8_t)computeT( t+i );
+		if( i==0 ) lastV = v;
 
 		*db++ = v; 
 		*db++ = v;
@@ -108,23 +143,45 @@ static int bytebeatCallback( const void *inputBuffer, void *outputBuffer,
 
                 *out++ = v;
                 *out++ = v;
-
         }
 
-	/* for the visualizer, prime it with [0] */
-	lastV = computeT( 0 );
-	lastSp = theGlitch->sp;
-
         t=t+i;
+#ifdef USEPORTAUDIO
         return 0;
+#endif
 }
 
 
+#ifdef USESDL
 
+/* soundInit
+ *
+ *	the libSDL version of sound system initialization
+ */
+int soundInit( void )
+{
+	SDL_AudioSpec fmt;
+
+	fmt.freq = 16000;
+	fmt.format = AUDIO_U8;
+	fmt.channels = 1;
+	fmt.samples = 512;
+	fmt.callback = bytebeatCallback;
+	fmt.userdata = NULL;
+
+	if( SDL_OpenAudio( &fmt, NULL ) < 0 ){
+		fprintf( stderr, "Unable to open audio: %s\n", SDL_GetError());
+		return -1;
+	}
+
+	return 0;
+}
+#endif
 
 
 /* ********************************************************************** */
 
+/* the keys for our color pairs for the screen */
 #define kColorHudA	(1)
 #define kColorHudB	(2)
 #define kColorFrame	(3)
@@ -137,6 +194,10 @@ static int bytebeatCallback( const void *inputBuffer, void *outputBuffer,
 #define kColorVisYel	(8)
 #define kColorVisRed	(9)
 
+
+/* initScreen
+ *	initialize the curses screen, and get it all setup the way we want
+ */
 void initScreen( void )
 {
 	initscr();
@@ -161,6 +222,11 @@ void initScreen( void )
 	init_pair( kColorVisRed, COLOR_RED, COLOR_RED );
 }
 
+
+/* deinitScreen
+ *
+ *	close down curses, restore stuff
+ */
 void deinitScreen( void )
 {
 	curs_set( 1 );
@@ -170,12 +236,21 @@ void deinitScreen( void )
 
 /* ********************************************************************** */
 
+/* volumeDown
+ *
+ *	turn down the volume 1/10th
+ */
 void volumeDown( void )
 {
 	volume -= 0.1;
 	if( volume < 0 ) volume = 0;
 }
 
+
+/* volumeUp
+ *
+ *	turn up the volume 1/10th
+ */
 void volumeUp( void )
 {
 	volume += 0.1;
@@ -186,6 +261,10 @@ void volumeUp( void )
 /* ********************************************************************** */
 
 
+/* showHUD
+ *
+ *	show the heads up display
+ */
 void showHUD( int mx, int my )
 {
 	/* draw some stats */
@@ -208,16 +287,27 @@ void showHUD( int mx, int my )
 */
 }
 
+
+
 WINDOW * vw;
 int vww, vwh;
 int vis = 1;
 
+/* nextVis
+ *
+ *	advance to the next visualizer
+ */
 void nextVis( void )
 {
 	vis ++;
 	if( vis > 1 ) vis = 0;
 }
 
+
+/* showVis
+ *
+ *	display the current visualizer to the screen
+ */
 void showVis( int mx, int my )
 {
 	int hp;
@@ -287,11 +377,17 @@ void showVis( int mx, int my )
 }
 
 
+
+
 WINDOW * ew;
 int eww, ewh;
 
 int eline = 0;
 
+/* showEdit
+ *
+ *	display the editor window to the screen
+ */
 void showEdit( int mx, int my )
 {
 	int l;
@@ -345,7 +441,7 @@ void showEdit( int mx, int my )
 		}
 
 		wmove( ew, 0, offs );
-		wprintw( ew, " (0x%02X)  -  Stack: %d  -  %d Tokens  ", lastV & 0x0ff, lastSp, glitchCountUseTokens( theGlitch ) );
+		wprintw( ew, " (0x%02X)  -  %d Tokens  ", lastV & 0x0ff, glitchCountUseTokens( theGlitch ) );
 		
 	}
 	wattroff( ew, COLOR_PAIR( kColorFrameT ));
@@ -355,6 +451,10 @@ void showEdit( int mx, int my )
 }
 
 
+/* handleEditorKey
+ *
+ *	handle key input for the editor fields
+ */
 int handleEditorKey( int ch )
 {
 	int ret = 0;
@@ -377,47 +477,154 @@ int handleEditorKey( int ch )
 
 /* ********************************************************************** */
 
+/* usage
+ *
+ *	display command line usage
+ */
+void usage( char * pn )
+{
+	fprintf( stderr, "Usage: %s [option] [glitch]\n", pn );
+	fprintf( stderr, "\n" );
+	fprintf( stderr, "Options:\n" );
+	fprintf( stderr, "    -listing    print out the program and exit\n" );
+	fprintf( stderr, "    -tokens     print the number of tokens and exit\n" );
+	fprintf( stderr, "    -name       print the name and exit\n" );
+	fprintf( stderr, "    -full       print full info and exit\n" );
+	fprintf( stderr, "    -help       print thisinfo and exit\n" );
+	fprintf( stderr, "\n" );
+	fprintf( stderr, "Glitch:\n" );
+	fprintf( stderr, "  The glitch can be specified in a number of ways:\n" );
+	fprintf( stderr, "  glitch://foo!aa    full uri on the line\n" );
+	fprintf( stderr, "  foo!aa             just the song data\n" );
+}
+
+
+/* handleOptions
+ *
+ *	handle some command line options (i know it's messy, sorry.)
+ */
+char * handleOptions( int argc, char ** argv )
+{
+	int ac = 1;
+	int i;
+	char buf[512];
+
+	for( ac = 1 ; ac<argc ; ac++ ) {
+		if( !strcmp( argv[ac], "-help" )) {
+			usage( argv[0] );
+			return NULL;
+		}
+
+		else if(   !strcmp( argv[ac], "-tokens" )
+			|| !strcmp( argv[ac], "-name" )
+			|| !strcmp( argv[ac], "-listing" )
+			|| !strcmp( argv[ac], "-full" ) ) {
+
+			theGlitch = glitchParse( argv[ac+1] );
+			if( !theGlitch ) {
+				fprintf( stderr, "Unable to parse glitch!\n" );
+				return NULL;
+			}
+
+			if( !strcmp( argv[ac], "-tokens" )) {
+				printf( "Tokens: %d\n", glitchCountUseTokens( theGlitch ));
+			}
+
+			if( !strcmp( argv[ac], "-name" )) {
+				printf( "Name: %s\n", theGlitch->name );
+			}
+
+			if( !strcmp( argv[ac], "-listing" )) {
+				i=0;
+				while( ( glitchLineToBuffer( theGlitch, i, buf, 512 ) >= 0 ))
+				{
+					printf( "%4d:  %s\n", i, buf );
+					i++;
+				}
+			}
+
+			if( !strcmp( argv[ac], "-full" )) {
+				glitchDump( theGlitch );
+			}
+
+			glitchDestroy( theGlitch );
+
+			return NULL;
+		}
+
+		else {
+			return argv[ac];
+		}
+	}
+	
+	return argv[argc];
+}
+
+/* main
+ *
+ *	do main-type-stuff
+ */
 int main( int argc, char ** argv )
 {
+	char * glstr = NULL;
+
+#ifdef USEPORTAUDIO
 	PaStream * stream;
 	PaError err;
+#endif
+#ifdef USESDL
+	int err;
+#endif
 
 	int ch;
 	int done = 0;
 	int mx, my;
 
-	if( argc != 2 ) {
-		fprintf( stderr, "Error: specify a glitch on the command line\n" );
+	/* check args */
+	glstr = handleOptions( argc, argv );
+	if( !glstr ) {
 		return -2;
 	}
 
 
+	/* initialize the audio system */
+#ifdef USEPORTAUDIO
 	stream = soundInit( bytebeatCallback, NULL );
 	if( !stream ) {
 		return -1;
 	}
+#endif
+#ifdef USESDL
+	err = soundInit();
+	if( err < 0 ) {
+		return -1;
+	}
+#endif
 
+	/* parse in the glitch */
 	theGlitch = glitchParse( argv[1] );
 	if( !theGlitch ) {
 		fprintf( stderr, "Unable to parse glitch!\n" );
 		return -2;
 	}
 
-/*
-		glitchDump( theGlitch );
-	return -1;
-*/
+
+	/* initialize the screen */
 	initScreen();
 
 
-        /* start playback */
-        if( soundStart( stream ) == paNoError )
+        /* start audio playback/generation */
+#ifdef USEPORTAUDIO
+        NULLif( soundStart( stream ) == paNoError )
         {
 	}
+#endif
+#ifdef USESDL
+	SDL_PauseAudio( 0 );
+#endif
 
 
-
-
+	/* display the TUI */
 	while( !done )
 	{
 		getmaxyx( stdscr, my, mx );
@@ -430,7 +637,12 @@ int main( int argc, char ** argv )
 			showEdit( mx, my );
 
 			doupdate();
+#ifdef USEPORTAUDIO
 			Pa_Sleep(50);
+#endif 
+#ifdef USESDL
+			usleep( 50 * 1000 );
+#endif
 		}
 		handleEditorKey( ch );
 
@@ -446,10 +658,18 @@ int main( int argc, char ** argv )
 		}
 	}
 	
+	/* shut down the TUI */
 	deinitScreen();
 
+	/* turn off the audio */
+#ifdef USEPORTAUDIO
 	err = soundDeinit( stream );
+#endif
+#ifdef USESDL
+	SDL_CloseAudio();
+#endif
 
+	/* destroy the glitch */
 	glitchDestroy( theGlitch );
 	return 0;
 }

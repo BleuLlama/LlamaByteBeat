@@ -28,29 +28,51 @@
 # 
 
 
+#######################################################################
+# Build options
+
+# uncomment *1* of these.  (pick between portAudio and libSDL for audio)
+#USEPORTAUDIO := 1
+USESDL	     := 1
+
 TARG := lbb
 
 SRCS := main.c \
-	glitch.c \
-	paHelper.c
+	glitch.c 
 
-LDFLAGS += 
-CFLAGS += -Wall -pedantic
-LIBS += -lncurses -lportaudio
-INCS += 
-
-export ARCH := $(shell uname)
-ifeq ($(ARCH),Darwin)
-LIBS += $(shell sdl-config --static-libs)
-else
-LIBS += 
+ifeq ($(USEPORTAUDIO),1)
+SRCS += paHelper.c
 endif
 
+####################
+# additions for portaudio
+ifeq ($(USEPORTAUDIO),1)
+LIBS += -lportaudio
+DEFS += -DUSEPORTAUDIO
+endif
+
+
+####################
+# additions for libsdl
+ifeq ($(USESDL),1)
+LIBS += $(shell sdl-config --static-libs)
+DEFS += -DUSESDL
+endif
+
+
+####################
+# general build rules
+
+LDFLAGS += 
+DEFS += 
+CFLAGS += $(DEFS) -Wall -pedantic
+LIBS += -lncurses 
+INCS += 
 
 
 ################################################################################
 
-all: $(TARG) simple sdlsimple
+all: $(TARG)
 .PHONY: all
 
 ################################################################################

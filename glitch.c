@@ -53,7 +53,7 @@ static const char *stristr( const char *haystack, const char *needle )
       return haystack;
    }
    for ( ; *haystack; ++haystack )
-   {
+  {
       if ( toupper(*haystack) == toupper(*needle) )
       {
          /*
@@ -249,7 +249,7 @@ void glitchPush( pGlitch *pg, long v )
 {
 	if( !pg ) return;
 
-	pg->stack[ pg->sp ] = v;
+	pg->stack[ pg->sp & 0x0ff ] = v;
 	pg->sp++;
 }
 
@@ -264,7 +264,7 @@ long glitchPop( pGlitch *pg )
 
 	pg->sp--;
 	
-	return pg->stack[ pg->sp ];
+	return pg->stack[ pg->sp & 0x0ff ];
 }
 
 
@@ -304,8 +304,6 @@ long glitchEvaluate( pGlitch * pg, long t )
 	long a, b;
 	if( !pg ) return 0;
 	
-	pg->sp = 0; /* reset the stack pointer */
-
 	for(pp = 0 ; pp < pg->nTokens ; pp++ )
 	{
 		/* in the program array, numbers are stored as 0..FF */
@@ -552,6 +550,7 @@ int glitchLineToBuffer( pGlitch * pg, int line, char * buf, int maxBuf )
 void glitchDump( pGlitch * pg )
 {
 	int i;
+	int sp0;
 
 	if( !pg ) {
 		printf( "NULL glitch passed in.\n" );
@@ -564,9 +563,10 @@ void glitchDump( pGlitch * pg )
 	/* some example datapoints */
 	printf( "      t=0: %ld\n", glitchEvaluate( pg, 0 ));
 	printf( "      t=1: %ld\n", glitchEvaluate( pg, 1 ));
+	sp0 = pg->sp;
 	printf( "      t=2: %ld\n", glitchEvaluate( pg, 2 ));
 	/* leftover stack */
-	printf( "    Stack: %d\n", pg->sp );
+	printf( "    Stack: %d\n", pg->sp - sp0 );
 
 	/* program */
 	printf( "  Listing:\n" );
