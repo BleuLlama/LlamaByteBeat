@@ -32,8 +32,8 @@
 # Build options
 
 # uncomment *1* of these.  (pick between portAudio and libSDL for audio)
-#USEPORTAUDIO := 1
-USESDL	     := 1
+USEPORTAUDIO := 1
+#USESDL	     := 1
 
 TARG := lbb
 
@@ -125,6 +125,7 @@ testa: $(TARG)
 	./$(TARG) glitch://genmusic2_atari!a7kaa6kmmAd!aaDka6kmmd
 	./$(TARG) the_42_melody!aAk2Alad
 	./$(TARG) glitch://2muchop!1!0!aFFe6had!!aaadda4eg8k!aada2000eh!a400e3h2fqad80h!0!!2.1.2.1.4.1.2.1!2.1.2.1.4.1.3.2!!a400e10hqFf!q
-
-test: $(TARG)
-	./$(TARG) -novis glitch://glitch4life!a1k1000.8eha80!a80dmlp0k1000.2dh!mre
+	./$(TARG) glitch://glitch4life!a1k1000.8eha80!a80dmlp0k1000.2dh!mre
+	
+test:
+	./$(TARG) glitch://guitar2!a3kal!a3000h400sl!80qD0h3d!ff4eFFl!p

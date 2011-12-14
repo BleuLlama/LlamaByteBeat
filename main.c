@@ -292,7 +292,7 @@ void showHUD( int mx, int my )
 
 WINDOW * vw;
 int vww, vwh;
-int vis = 1;
+int vis = 0;
 
 /* nextVis
  *
@@ -301,7 +301,7 @@ int vis = 1;
 void nextVis( void )
 {
 	vis ++;
-	if( vis > 1 ) vis = 0;
+	if( vis > 2 ) vis = 0;
 }
 
 
@@ -372,6 +372,8 @@ void showVis( int mx, int my )
 				wattroff( vw, c );
 			}
 		}
+	    } else if( vis == 2 ) {
+		/* nothing */
 	    }
 	}
 
@@ -380,7 +382,7 @@ void showVis( int mx, int my )
 	wmove( vw, 0, 4 );
 	wprintw( vw, " Visualizer: %s ", 
 			(!enableVis)?"Disabled" :
-			(vis == 0)? "Dot Waveform" : "Intensity Bars" );
+			(vis == 0)? "Dot Waveform" : (vis == 1)? "Intensity Bars": "Disabled" );
 	wmove( vw, 0, vww-15 );
 	wprintw( vw, " t = %ld ", t );
 	wattroff( vw, COLOR_PAIR( kColorFrameT ));
@@ -469,6 +471,7 @@ void showEdit( int mx, int my )
  *
  *	handle key input for the editor fields
  */
+int ti = 0;
 int handleEditorKey( int ch )
 {
 	int ret = 0;
@@ -477,11 +480,17 @@ int handleEditorKey( int ch )
 		eline++;
 		if( eline > 15 ) eline = 0;
 		ret = 1;
+		ti = 0;
 	}
 	if( ch == KEY_UP ) {
 		eline--;
 		if( eline < 0 ) eline = 15;
 		ret = 1;
+		ti = 0;
+	}
+
+	if( ch == KEY_LEFT ) {
+		ti--;
 	}
 
 	return ret;
@@ -533,7 +542,6 @@ char * handleOptions( int argc, char ** argv )
 	}
 
 	for( ac = 1 ; ac<argc ; ac++ ) {
-printf( ">> %s\n", argv[ac] );
 		if( !strcmp( argv[ac], "-novis" )) {
 			enableVis = 0;
 		} else 
@@ -581,7 +589,6 @@ printf( ">> %s\n", argv[ac] );
 		}
 
 		else {
-printf( "GGG %s\n", argv[ac] );
 			return argv[ac];
 		}
 	}
@@ -644,7 +651,7 @@ int main( int argc, char ** argv )
 
         /* start audio playback/generation */
 #ifdef USEPORTAUDIO
-        NULLif( soundStart( stream ) == paNoError )
+        if( soundStart( stream ) == paNoError )
         {
 	}
 #endif
