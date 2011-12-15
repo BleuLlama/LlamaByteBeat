@@ -34,23 +34,57 @@
 #include <stdint.h>
 
 /* ********************************************************************** */
+/* Structure */
 
 /* struct pGlitch
  *
  *	This is our structure where we hold everything associated
  *	with a parsed in glitch 
  */
-#define kGlitchMaxName	20	/* really, it's 16, but let's relax that */
-#define kGlitchMaxSteps	512	/* really it's 256, but let's relax that */
+#define kGlitchMaxName		20	/* really, it's 16, but let's relax that */
+#define kGlitchMaxTokens	512	/* really it's 256, but let's relax that */
+#define kGlitchMaxLines		20	/* really, it's 16, but let's relax that */
 
 typedef struct pGlitch {
+	/* storage */
 	char name[kGlitchMaxName];
-	long tokens[kGlitchMaxSteps];
+	long tokens[kGlitchMaxTokens];
 	int nTokens;
 
-	uint32_t stack[256];
-	int sp;
+	/* for runtime */
+	uint32_t stack[0xff];	/* stack.  sp is masked with 0xff -- circular */
+	int sp;			/* current stack pointer, persistant between calls */
+
+	/* for editing */
+	int tokensPerLine[kGlitchMaxLines];
+	int cursorLine;
+	int cursorPos;
 } pGlitch;
+
+
+/* opcode list */
+#define kOP_T		(-1 * 'a')
+#define kOP_PUT		(-1 * 'b')
+#define kOP_DROP	(-1 * 'c')
+#define kOP_MUL		(-1 * 'd')
+#define kOP_DIV		(-1 * 'e')
+#define kOP_ADD		(-1 * 'f')
+#define kOP_SUB		(-1 * 'g')
+#define kOP_MOD		(-1 * 'h')
+#define kOP_LSHIFT	(-1 * 'j')
+#define kOP_RSHIFT	(-1 * 'k')
+#define kOP_AND		(-1 * 'l')
+#define kOP_OR		(-1 * 'm')
+#define kOP_XOR		(-1 * 'n')
+#define kOP_NOT		(-1 * 'o')
+#define kOP_DUP		(-1 * 'p')
+#define kOP_PICK	(-1 * 'q')
+#define kOP_SWAP	(-1 * 'r')
+#define kOP_LT		(-1 * 's')
+#define kOP_GT		(-1 * 't')
+#define kOP_EQ		(-1 * 'u')
+#define kOP_NEWLINE	(-1 * '!')
+#define kOP_NUMNOP	(-1 * '.')
 
 
 /* glitchDestroy
@@ -71,12 +105,22 @@ void glitchDestroy( pGlitch * pg );
 pGlitch* glitchParse( char * gstr );
 
 
+/* glitchRefreshTPL
+ *
+ *	refresh tokens per line count 
+ */
+void glitchRefreshTPL( pGlitch * pg );
+
+
 /* glitchTokenToString
  *
  *	take in the token (URI version), and return a decoded string 
  */
 char * glitchTokenToString( long t );
 
+
+/* ********************************************************************** */
+/* Runtime */
 
 /* glitchPush
  *
@@ -122,6 +166,17 @@ long glitchEvaluate( pGlitch * pg, long t );
 int glitchCountUseTokens( pGlitch * pg );
 
 
+/* ********************************************************************** */
+/* Display */
+
+/* glitchLineToBufferskCursor
+ *
+ *      pretty-text a line to a buffer, with our without the cursor
+ *      returns the line number if found, -1 if not found
+ */
+int glitchLineToBufferAskCursor( pGlitch * pg, int line, char * buf, int maxBuf, int showCursor );
+
+
 /* glitchLineToBuffer
  *
  *	pretty-text a line to a buffer
@@ -130,8 +185,87 @@ int glitchCountUseTokens( pGlitch * pg );
 int glitchLineToBuffer( pGlitch * pg, int line, char * buf, int maxBuf );
 
 
+/* glitchLineToBufferWithCursor
+ *
+ *      display a line with the cursor in it
+ */
+int glitchLineToBufferWithCursor( pGlitch * pg, int line, char * buf, int maxBuf );
+
+
 /* glitchDump
  *
  *	Pretty-print the passed in glitch to stdout
  */
 void glitchDump( pGlitch * pg );
+
+
+/* ********************************************************************** */
+/* Editing */
+
+/* movement */
+
+/* glitchCursorReset
+ *
+ *	moves the cursor to the start position
+ */
+void glitchCursorReset( pGlitch * pg );
+
+
+/* glitchCursorMoveStartOfLine
+ *
+ *	moves cursor to HOME for line (0)
+ */
+void glitchCursorMoveStartOfLine( pGlitch * pg );
+
+
+/* glitchCursorMoveEndOfLine
+ *
+ *	moves cursor to END for line
+ */
+void glitchCursorMoveEndOfLine( pGlitch * pg );
+
+
+/* glitchCursorMoveOnLine
+ *
+ * 	moves the cursor on the current line
+ */
+void glitchCursorMoveOnLine( pGlitch * pg, int direction );
+
+
+/* glitchCursorMoveLines
+ *
+ * 	moves the cursor between lines
+ */
+void glitchCursorMoveLines( pGlitch * pg, int direction );
+
+
+/* edit */
+
+/* glitchInsert
+ *
+ *	Insert the opcode or number at the current position
+ */
+void glitchInsert( pGlitch * pg, long v );
+
+
+/* glitchAppendToNumber
+ *
+ *	curr *= 10;  curr += v;
+ */ 
+void glitchAppendToNumber( pGlitch * pg, long v );
+
+
+/* glitchRemovePrevious (Backspace)
+ *
+ *	Remove the previous token on the current line
+ *	If at the beginning of the line, do nothing
+ */
+void glitchRemovePrevious( pGlitch * pg );
+
+
+/* glitchRemoveNext (Delete)
+ *
+ *	Remove the next token on the current line
+ *	If at the end of line, do nothing
+ */
+void glitchRemoveNext( pGlitch * pg );

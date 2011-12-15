@@ -22,7 +22,7 @@ int main( int argc, char **argv ){
     }
     SDL_PauseAudio(0);
  
-    getchar();
+    getch();
  
     SDL_CloseAudio();
     return 0;

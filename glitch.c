@@ -39,7 +39,11 @@
 #include <string.h>	/* for strchr() */
 #include "glitch.h"
 
+#define kCursorCharA	"_"	/* make sure it's a "" string */
+#define kCursorCharB	"#"	/* make sure it's a "" string */
+
 /* ********************************************************************** */
+/* Utility */
 
 
 /* stristr
@@ -76,28 +80,9 @@ static const char *stristr( const char *haystack, const char *needle )
    return 0;
 }
 
+
 /* ********************************************************************** */
-
-
-/* struct pGlitch
- *
- *	This is our structure where we hold everything associated
- *	with a parsed in glitch 
- */
-#ifdef NEVER
-#define kGlitchMaxName	20	/* really, it's 16, but let's relax that */
-#define kGlitchMaxSteps	512	/* really it's 256, but let's relax that */
-
-typedef struct pGlitch {
-	char name[kGlitchMaxName];
-	long tokens[kGlitchMaxSteps];
-	int nTokens;
-
-	uint32_t stack[256];
-	int sp;
-} pGlitch;
-#endif
-
+/* Structure */
 
 /* glitchDestroy
  *
@@ -199,8 +184,30 @@ pGlitch* glitchParse( char * gstr )
 	if( lastWasNumber ) { pg->nTokens++; }  /* final bit if we end on a number */
 	
 
-	/* and return the struct */
+	glitchRefreshTPL( pg );
+
 	return pg;
+}
+
+
+/* glitchRefreshTPL
+ *
+ *	refresh tokens per line count 
+ */
+void glitchRefreshTPL( pGlitch * pg )
+{
+	/* another quick pass to count the tokens per line */
+	int l = 0;
+	int i = 0;
+
+	for( i=0 ; i<pg->nTokens ; i++ )
+	{
+		if( pg->tokens[i] == (-1 * '!')) {
+			l++;
+		} else {
+			pg->tokensPerLine[l]++;
+		}	
+	}
 }
 
 
@@ -247,6 +254,9 @@ char * glitchTokenToString( long t )
 	return "?UNK";
 }
 
+
+/* ********************************************************************** */
+/* Runtime */
 
 /* glitchPush
  *
@@ -464,6 +474,7 @@ long glitchEvaluate( pGlitch * pg, long t )
 			else glitchPush( pg, 0 );
 			break;
 
+
 		default:
 			/* it's a number, just push it */
 			if( pg->tokens[pp] >= 0 ) {
@@ -499,17 +510,23 @@ int glitchCountUseTokens( pGlitch * pg )
 }
 
 
-/* glitchLineToBuffer
+/* ********************************************************************** */
+/* Display */
+
+/* glitchLineToBufferskCursor
  *
- *	pretty-text a line to a buffer
+ *	pretty-text a line to a buffer, with our without the cursor
  *	returns the line number if found, -1 if not found
  */
-int glitchLineToBuffer( pGlitch * pg, int line, char * buf, int maxBuf )
+int glitchLineToBufferAskCursor( pGlitch * pg, int line, char * buf, int maxBuf, int showCursor )
 {
 	int l;
 	int t;
+	int tpl = 0;
 	long tok;
+	int cursorShown = 0;
 	char tbuf[16];
+	static int kc=0;
 
 	if( !buf ) return -1;
 	buf[0] = '\0';
@@ -525,6 +542,19 @@ int glitchLineToBuffer( pGlitch * pg, int line, char * buf, int maxBuf )
 
 		/* we're in the right line! dump that stuff out! */
 		if( l == line ) {
+			if( showCursor == 1 ) {
+				if( l == pg->cursorLine  &&  tpl == pg->cursorPos ) {
+					if( kc & 1 ) {
+						strncat( buf, kCursorCharA " ", maxBuf );
+					} else {
+						strncat( buf, kCursorCharB " ", maxBuf );
+					}
+					kc++;
+					cursorShown = 1;
+				} else {
+					strncat( buf, "  ", maxBuf );
+				}
+			}
 			if( tok < 0 ) {
 				if( tok == ( -1 * '!' ) ) {
 					return line; 
@@ -535,7 +565,10 @@ int glitchLineToBuffer( pGlitch * pg, int line, char * buf, int maxBuf )
 				snprintf( tbuf, 16, "%ld", tok );
 				strncat( buf, tbuf, maxBuf );
 			}
-			strncat( buf, " ", maxBuf );
+			if( showCursor == 0 ) {
+				strncat( buf, " ", maxBuf );
+			}
+			tpl++;
 		}
 
 		/* check for newline */
@@ -545,10 +578,47 @@ int glitchLineToBuffer( pGlitch * pg, int line, char * buf, int maxBuf )
 		}
 	}
 
+	/* check for end of line stuff for showing the cursor... */
+	if( showCursor )
+	{
+		if( !cursorShown ) {
+			/* check to see which line to put it on. */
+			if( line == pg->cursorLine ) {
+				if( kc & 1 ) {
+					strncat( buf, kCursorCharA, maxBuf ); /* no need for extra space, since it's EOL */
+				} else {
+					strncat( buf, kCursorCharB, maxBuf );
+				}
+				kc++;
+			}
+		}
+
+		/* need this to clear the space (perhaps more redraw/line clear is necessary?) */
+		strncat( buf, "       ", maxBuf );
+	}
+
 	if( l == line ) return line;
 	return -1;
 }
 
+
+/* glitchLineToBuffer
+ *
+ *	display a line without the cursor in it
+ */
+int glitchLineToBuffer( pGlitch * pg, int line, char * buf, int maxBuf )
+{
+	return glitchLineToBufferAskCursor( pg, line, buf, maxBuf, 0 );
+}
+
+/* glitchLineToBufferWithCursor
+ *
+ *	display a line with the cursor in it
+ */
+int glitchLineToBufferWithCursor( pGlitch * pg, int line, char * buf, int maxBuf )
+{
+	return glitchLineToBufferAskCursor( pg, line, buf, maxBuf, 1 );
+}
 
 /* glitchDump
  *
@@ -595,4 +665,228 @@ void glitchDump( pGlitch * pg )
 	printf( "\n" );
 	*/
 
+}
+
+
+
+/* ********************************************************************** */
+/* Editing */
+
+/* movement */
+
+/* glitchCursorReset
+ *
+ *	moves the cursor to the start position
+ */
+void glitchCursorReset( pGlitch * pg )
+{
+	if( !pg ) return;
+
+	pg->cursorPos = 0;
+	pg->cursorLine = 0;
+}
+
+
+/* glitchCursorMoveStartOfLine
+ *
+ *	moves cursor to HOME for line (0)
+ */
+void glitchCursorMoveStartOfLine( pGlitch * pg )
+{
+	if( !pg ) return;
+
+	pg->cursorPos = 0;
+}
+
+
+/* glitchCursorMoveEndOfLine
+ *
+ *	moves cursor to END for line
+ */
+void glitchCursorMoveEndOfLine( pGlitch * pg )
+{
+	if( !pg ) return;
+
+	pg->cursorPos = pg->tokensPerLine[ pg->cursorLine ]; 
+}
+
+
+/* glitchCursorMoveOnLine
+ *
+ * 	moves the cursor on the current line
+ */
+void glitchCursorMoveOnLine( pGlitch * pg, int direction )
+{
+	if( !pg || direction == 0 ) return;
+
+	if( direction < 0 ) {
+		pg->cursorPos--;
+		if( pg->cursorPos < 0 ) {
+			pg->cursorPos = pg->tokensPerLine[ pg->cursorLine ]; 
+		}
+	} else {
+		pg->cursorPos++;
+		if( pg->cursorPos >pg->tokensPerLine[ pg->cursorLine ] ) {
+			pg->cursorPos = 0;
+		}
+	}
+}
+
+
+/* glitchCursorMoveLines
+ *
+ * 	moves the cursor between lines
+ */
+void glitchCursorMoveLines( pGlitch * pg, int direction )
+{
+	if( !pg || direction == 0 ) return;
+
+	if( direction > 0 ) pg->cursorLine++;
+	else pg->cursorLine--;
+
+	pg->cursorLine &= 0x0F;
+
+	pg->cursorPos = 0;
+}
+
+
+/* Edit */
+
+
+static int glitchIndexOfLineCol( pGlitch * pg, int line, int col  )
+{
+	int ll = 0;
+	int cc = 0;
+	int idx = 0;
+
+	if( !pg ) return 0;
+
+
+	for( idx = 0 ; idx < kGlitchMaxTokens ; idx++ )
+	{
+		if( ll == line && cc == col ) return idx;
+
+		if( pg->tokens[idx] == (-1 * '!' )) {
+			ll++;
+			cc = 0;
+		} else {
+			cc++;
+		}
+	}
+	
+	
+	return 0;
+}
+
+/* glitchSlideTokensIn
+ *
+ *	take everything from idx+1 to the end, and slide it in.
+ *	removes the value at [idx]
+ */
+static void glitchSlideTokensIn( pGlitch * pg, int idx )
+{
+	int i;
+	if( !pg || idx<0 || idx>kGlitchMaxTokens-1 || idx > pg->nTokens ) return;
+
+	for( i=idx ; i<kGlitchMaxTokens-1 ; i++ ) {
+		pg->tokens[i] = pg->tokens[i+1];
+	}
+	pg->nTokens--;
+}
+
+
+/* glitchSlideTokensOut
+ *
+ *	takes everything from idx to the end and moves it out
+ *	inserts a '.' nop character in its place
+ */
+static void glitchSlideTokensOut( pGlitch * pg, int idx )
+{
+	int i;
+	if( !pg || idx<0 || idx>kGlitchMaxTokens-1 || idx > pg->nTokens ) return;
+
+
+	for( i=kGlitchMaxTokens-2 ; i > idx ; i-- ) {
+		pg->tokens[i+1] = pg->tokens[i];
+	}
+	pg->tokens[idx] = 69;
+
+	if( pg->nTokens < kGlitchMaxTokens ) pg->nTokens++;
+}
+
+
+/* glitchInsert
+ *
+ *	Insert the opcode or number at the current position
+ */
+void glitchInsert( pGlitch * pg, long v )
+{
+	int idx;
+	if( !pg ) return;
+
+	idx = glitchIndexOfLineCol( pg, pg->cursorLine, pg->cursorPos );
+	glitchSlideTokensOut( pg, idx );
+	pg->tokens[idx] = v;
+	pg->cursorPos++;
+}
+
+/* glitchAppendToNumber
+ *
+ *	curr *= 10;  curr += v;
+ */ 
+void glitchAppendToNumber( pGlitch * pg, long v )
+{
+	int idx;
+	if( !pg ) return;
+
+	idx = glitchIndexOfLineCol( pg, pg->cursorLine, pg->cursorPos );
+	if( idx == 0 ) {
+		glitchInsert( pg, v );
+		return;
+	}
+
+	pg->tokens[idx-1] *= 10;
+	pg->tokens[idx-1] += v;
+}
+
+
+/* glitchRemovePrevious (Backspace)
+ *
+ *	Remove the previous token on the current line
+ *	If at the beginning of the line, do nothing
+ */
+void glitchRemovePrevious( pGlitch * pg )
+{
+	int idx;
+	if( !pg ) return;
+
+	idx = glitchIndexOfLineCol( pg, pg->cursorLine, pg->cursorPos );
+
+	if( idx < 1 ) return;
+	if( pg->tokens[idx-1] == ( -1 * '!' ) ) return;
+		
+	pg->cursorPos--;
+	glitchSlideTokensIn( pg, idx-1 );
+
+	glitchRefreshTPL( pg );
+}
+
+
+/* glitchRemoveNext (Delete)
+ *
+ *	Remove the next token on the current line
+ *	If at the end of line, do nothing
+ */
+void glitchRemoveNext( pGlitch * pg )
+{
+	int idx;
+	if( !pg ) return;
+
+	idx = glitchIndexOfLineCol( pg, pg->cursorLine, pg->cursorPos );
+
+	if( pg->tokens[idx] == ( -1 * '!' ) ) return;
+		
+	glitchSlideTokensIn( pg, idx );
+
+	glitchRefreshTPL( pg );
 }

@@ -1,3 +1,4 @@
+int lastch;
 /*
 	LlamaByteBeat
 	2011-Dec
@@ -53,6 +54,7 @@
 long t = 0;
 long bufferSize = 1;
 float volume = 1.0;
+int speed = 1;
 int enableVis = 1;
 
 pGlitch * theGlitch = NULL;
@@ -112,10 +114,13 @@ static int bytebeatCallback( const void *inputBuffer,
                            const PaStreamCallbackTimeInfo* timeInfo,
                            PaStreamCallbackFlags statusFlags,
                            void *userData )
-#endif
+#else
 #ifdef USESDL
 /* libSDL's version */
 static void bytebeatCallback( void * userData, Uint8 *outputBuffer, int len )
+#else
+static void bytebeatCallback( void * userData, uint8_t *outputBuffer, int len )
+#endif
 #endif
 {
         /* Cast data passed through stream to our structure. */
@@ -146,7 +151,7 @@ static void bytebeatCallback( void * userData, Uint8 *outputBuffer, int len )
                 *out++ = v;
         }
 
-        t=t+i;
+        t=t+(i/speed);
 #ifdef USEPORTAUDIO
         return 0;
 #endif
@@ -211,6 +216,8 @@ void initScreen( void )
 	intrflush( stdscr, FALSE );
 	keypad( stdscr, TRUE );
 
+	mousemask( ALL_MOUSE_EVENTS, NULL );
+
 	start_color();
 	init_pair( kColorHudA, COLOR_WHITE, COLOR_BLACK );
 	init_pair( kColorHudB, COLOR_YELLOW, COLOR_BLACK );
@@ -272,10 +279,12 @@ void showHUD( int mx, int my )
 	/*attron( A_BOLD ); */
 /*
 	attron( COLOR_PAIR( kColorHudA ) );
-	move( 0, 0 );
-	printw( "Time: %ld", t );
+	move( my, 0 );
+	printw( "Vol: %0.02f    Speed:%d", volume, speed );
 	attroff( COLOR_PAIR( kColorHudA ) );
 */
+
+	
 
 /*
 	attron( COLOR_PAIR( kColorHudB ) );
@@ -332,7 +341,6 @@ void showVis( int mx, int my )
 	    wborder(vw, '|', '|', '-', '-', '+', '+', '+', '+');
 	    wattroff( vw, COLOR_PAIR( kColorFrame ) );
 
-
 	    /* visualizer */
 	    if( vis == 0 ) {
 		/* dotty display */
@@ -385,6 +393,10 @@ void showVis( int mx, int my )
 			(vis == 0)? "Dot Waveform" : (vis == 1)? "Intensity Bars": "Disabled" );
 	wmove( vw, 0, vww-15 );
 	wprintw( vw, " t = %ld ", t );
+
+	/* other stats */
+	wmove( vw, vwh-1, 4 );
+	wprintw( vw, " Vol: %0.02f    Speed: %d  %d", volume, speed, lastch );
 	wattroff( vw, COLOR_PAIR( kColorFrameT ));
 
 	/* wrefresh( vw ); */
@@ -396,8 +408,7 @@ void showVis( int mx, int my )
 
 WINDOW * ew;
 int eww, ewh;
-
-int eline = 0;
+int fullEditorRedraw = 1;
 
 /* showEdit
  *
@@ -421,10 +432,20 @@ void showEdit( int mx, int my )
 		wattroff( ew, COLOR_PAIR( kColorFrame ) );
 	}
 
+	if( !theGlitch ) return;
+
+	if( fullEditorRedraw ) {
+		fullEditorRedraw = 0;
+		wclear( ew );
+		wattron( ew, COLOR_PAIR( kColorFrame ) );
+		wborder(ew, '|', '|', '-', '-', '+', '+', '+', '+');
+		wattroff( ew, COLOR_PAIR( kColorFrame ) );
+	}
+
 	/* line numbering */
 	for( l=0; l<16 ; l++ )
 	{
-		if( l == eline ) {
+		if( l == theGlitch->cursorLine ) {
 			wattron( ew, COLOR_PAIR( kColorLineSel ));
 		} else {
 			wattron( ew, COLOR_PAIR( kColorLine ));
@@ -432,11 +453,11 @@ void showEdit( int mx, int my )
 		wmove( ew, 1+l, 2 );
 		wprintw( ew, "%02d:", l );
 	
-		glitchLineToBuffer( theGlitch, l, buf, 256 );
+		glitchLineToBufferWithCursor( theGlitch, l, buf, 256 );
 		wmove( ew, 1+l, 7 );
-		wprintw( ew, "%s", buf );
+		wprintw( ew, "%s", buf, theGlitch->tokensPerLine );
 		
-		if( l == eline ) {
+		if( l == theGlitch->cursorLine ) {
 			wattroff( ew, COLOR_PAIR( kColorLineSel ));
 		} else {
 			wattroff( ew, COLOR_PAIR( kColorLine ));
@@ -467,35 +488,135 @@ void showEdit( int mx, int my )
 }
 
 
+int lastWasDigit = 0;
+
 /* handleEditorKey
  *
  *	handle key input for the editor fields
  */
-int ti = 0;
 int handleEditorKey( int ch )
 {
-	int ret = 0;
+	int ret = 1;
 
-	if( ch == KEY_DOWN ) { 
-		eline++;
-		if( eline > 15 ) eline = 0;
-		ret = 1;
-		ti = 0;
-	}
-	if( ch == KEY_UP ) {
-		eline--;
-		if( eline < 0 ) eline = 15;
-		ret = 1;
-		ti = 0;
-	}
+	switch( ch ) {
+	case( KEY_DOWN ):
+		glitchCursorMoveLines( theGlitch, 1 );
+		break;
 
-	if( ch == KEY_LEFT ) {
-		ti--;
+	case( KEY_UP ):
+		glitchCursorMoveLines( theGlitch, -1 );
+		break;
+
+	case( KEY_LEFT ):
+		glitchCursorMoveOnLine( theGlitch, -1 );
+		break;
+
+	case( KEY_RIGHT ):
+		glitchCursorMoveOnLine( theGlitch, 1 );
+		break;
+
+	case( KEY_HOME ):
+		glitchCursorMoveStartOfLine( theGlitch );
+		break;
+
+	case( KEY_END ):
+		glitchCursorMoveEndOfLine( theGlitch );
+		break;
+
+	case( KEY_BACKSPACE ):
+	case( 127 ): /* "delete" (backspace) on Mac keyboards */
+		glitchRemovePrevious( theGlitch );
+		fullEditorRedraw = 1;
+		break;
+
+	case( KEY_DC ):
+		glitchRemoveNext( theGlitch );
+		fullEditorRedraw = 1;
+		break;
+
+	/* letters and such */
+	case( 't' ): glitchInsert( theGlitch, kOP_T ); break;
+	case( 'u' ): glitchInsert( theGlitch, kOP_PUT ); break;
+	case( 'r' ): glitchInsert( theGlitch, kOP_DROP ); break;
+
+	case( '*' ): glitchInsert( theGlitch, kOP_MUL ); break;
+	case( '/' ): glitchInsert( theGlitch, kOP_DIV ); break;
+	case( '+' ): glitchInsert( theGlitch, kOP_ADD ); break;
+	case( '-' ): glitchInsert( theGlitch, kOP_SUB ); break;
+	case( 'm' ): glitchInsert( theGlitch, kOP_MOD ); break;
+
+	case( ',' ): glitchInsert( theGlitch, kOP_LSHIFT ); break;
+	case( '.' ): glitchInsert( theGlitch, kOP_RSHIFT ); break;
+
+	case( '&' ): glitchInsert( theGlitch, kOP_AND ); break;
+	case( '|' ): glitchInsert( theGlitch, kOP_OR ); break;
+	case( '^' ): glitchInsert( theGlitch, kOP_XOR ); break;
+	case( '~' ): glitchInsert( theGlitch, kOP_NOT ); break;
+
+	case( 'd' ): glitchInsert( theGlitch, kOP_DUP ); break;
+	case( 'p' ): glitchInsert( theGlitch, kOP_PICK ); break;
+	case( 's' ): glitchInsert( theGlitch, kOP_SWAP ); break;
+
+	case( '<' ): glitchInsert( theGlitch, kOP_LT ); break;
+	case( '>' ): glitchInsert( theGlitch, kOP_GT ); break;
+	case( '=' ): glitchInsert( theGlitch, kOP_EQ ); break;
+
+	case( ' ' ): lastWasDigit = 0; break;
+
+	default:
+		ret = 0;
+		break;
+	}
+	
+	if( ch >='0' && ch <='9' )
+	{
+		if( lastWasDigit ) {
+			glitchAppendToNumber( theGlitch, ch - '0' );
+		} else {
+			glitchInsert( theGlitch, ch - '0' );
+		}
+		lastWasDigit = 1;
 	}
 
 	return ret;
 }
 
+/* handleMouse
+ *
+ *	handle mosue clicks and such
+ */
+int handleMouse( int ch )
+{
+	int ret = 0;
+	int my, mx;
+	MEVENT event;
+
+	if( ch != KEY_MOUSE ) return ret;
+
+	getmaxyx( stdscr, my, mx );
+
+
+	if( getmouse( &event ) == OK ) {
+		if( event.bstate & BUTTON1_CLICKED || event.bstate & BUTTON1_PRESSED || event.bstate & BUTTON1_PRESSED ) {
+			if( theGlitch ) {
+				if( event.y >= (my-17 ) && event.y < my-1 ) {
+					theGlitch->cursorLine = event.y - (my - 17);
+					theGlitch->cursorPos = 0;
+				}
+			}
+
+
+			/*
+			if( event.x < mx/2 ) { volume = 0.0; }
+			if( event.x > mx/2 ) { volume = 0.1; }
+			*/
+		}
+		ret = 1;
+	}
+
+	return ret;
+	
+}
 
 
 /* ********************************************************************** */
@@ -518,6 +639,7 @@ void usage( char * pn )
 	fprintf( stderr, "    -help       print thisinfo and exit\n" );
 	fprintf( stderr, "\n" );
 	fprintf( stderr, "    -novis      disable the visualizer\n" );
+	fprintf( stderr, "    -volume V   define a start volume (0 .. 1.0)\n" );
 	fprintf( stderr, "\n" );
 	fprintf( stderr, "Glitch:\n" );
 	fprintf( stderr, "  The glitch can be specified in a number of ways:\n" );
@@ -542,6 +664,13 @@ char * handleOptions( int argc, char ** argv )
 	}
 
 	for( ac = 1 ; ac<argc ; ac++ ) {
+		if( !strcmp( argv[ac], "-volume" )) {
+			ac++;
+			if( argv[ac] ) {
+				volume = atof( argv[ac] );
+			}
+		} else 
+
 		if( !strcmp( argv[ac], "-novis" )) {
 			enableVis = 0;
 		} else 
@@ -664,13 +793,18 @@ int main( int argc, char ** argv )
 	while( !done )
 	{
 		getmaxyx( stdscr, my, mx );
+
+		/** NOTE:
+		***   This should be replaced with libSDL's keyboard stuff.
+		***   http://www.libsdl.org/docs/html/guideinputkeyboard.html
+                **/
 		ch = getch();
 		if( ch == -1)
 		{
 			/*clear();*/
 			showVis( mx, my );
-			showHUD( mx, my );
 			showEdit( mx, my );
+			showHUD( mx, my );
 
 			doupdate();
 #ifdef USEPORTAUDIO
@@ -680,12 +814,18 @@ int main( int argc, char ** argv )
 			usleep( 50 * 1000 );
 #endif
 		}
+else
+lastch = ch;
+		handleMouse( ch );
 		handleEditorKey( ch );
 
 		/*
 		if( ch == 'V' ) volumeUp();
 		if( ch == 'v' ) volumeDown();
 		*/
+
+		if( ch == '(' ) { speed -= 1;  if( speed < 1 ) speed=1; };
+		if( ch == ')' ) { speed += 1; };
 
 		if( ch == 'v' ) nextVis();
 		if( ch == 'q' )

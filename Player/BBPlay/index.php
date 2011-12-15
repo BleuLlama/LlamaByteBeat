@@ -35,7 +35,7 @@ if( $pos === false ) {
     <!-- charset must remain utf-8 to be handled properly by Processing -->
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
 
-    <title>LlamaGlitch : Built with Processing</title>
+    <title>ByteBeat Player</title>
 
     <style type="text/css">
       /* <![CDATA[ */
@@ -62,7 +62,7 @@ if( $pos === false ) {
 
   <body>
     <div id="content">
-      <div id="LlamaGlitch_container">
+      <div id="BBPlay_container">
 
 	<!-- This version plays nicer with older browsers, 
 	     but requires JavaScript to be enabled. 
@@ -74,8 +74,8 @@ if( $pos === false ) {
 	  /* <![CDATA[ */
 
 	  var attributes = { 
-            code: 'LlamaGlitch.class',
-            archive: 'LlamaGlitch.jar,jl1.0.jar,jsminim.jar,minim-spi.jar,minim.jar,mp3spi1.9.4.jar,tritonus_aos.jar,tritonus_share.jar,core.jar',
+            code: 'BBPlay.class',
+            archive: 'BBPlay.jar,jl1.0.jar,jsminim.jar,minim-spi.jar,minim.jar,mp3spi1.9.4.jar,tritonus_aos.jar,tritonus_share.jar,core.jar',
             width: 512, 
             height: 256,
           };
@@ -92,13 +92,13 @@ if( $pos === false ) {
         
 	<noscript> <div>
 	  <!--[if !IE]> -->
-	  <object classid="java:LlamaGlitch.class" 
+	  <object classid="java:BBPlay.class" 
             	  type="application/x-java-applet"
-            	  archive="LlamaGlitch.jar,jl1.0.jar,jsminim.jar,minim-spi.jar,minim.jar,mp3spi1.9.4.jar,tritonus_aos.jar,tritonus_share.jar,core.jar"
+            	  archive="BBPlay.jar,jl1.0.jar,jsminim.jar,minim-spi.jar,minim.jar,mp3spi1.9.4.jar,tritonus_aos.jar,tritonus_share.jar,core.jar"
             	  width="512" height="256"
             	  standby="Loading Processing software..." >
             
-	    <param name="archive" value="LlamaGlitch.jar,jl1.0.jar,jsminim.jar,minim-spi.jar,minim.jar,mp3spi1.9.4.jar,tritonus_aos.jar,tritonus_share.jar,core.jar" />
+	    <param name="archive" value="BBPlay.jar,jl1.0.jar,jsminim.jar,minim-spi.jar,minim.jar,mp3spi1.9.4.jar,tritonus_aos.jar,tritonus_share.jar,core.jar" />
 	    
 	    <param name="mayscript" value="true" />
 	    <param name="scriptable" value="true" />
@@ -117,8 +117,8 @@ if( $pos === false ) {
 		    width="512" height="256"
 		    standby="Loading Processing software..."  >
 	      
-	      <param name="code" value="LlamaGlitch" />
-	      <param name="archive" value="LlamaGlitch.jar,jl1.0.jar,jsminim.jar,minim-spi.jar,minim.jar,mp3spi1.9.4.jar,tritonus_aos.jar,tritonus_share.jar,core.jar" />
+	      <param name="code" value="BBPlay" />
+	      <param name="archive" value="BBPlay.jar,jl1.0.jar,jsminim.jar,minim-spi.jar,minim.jar,mp3spi1.9.4.jar,tritonus_aos.jar,tritonus_share.jar,core.jar" />
 	      
 	      <param name="mayscript" value="true" />
 	      <param name="scriptable" value="true" />
@@ -184,7 +184,7 @@ controls:<br/>
       
       
       <p>
-	Source code: <a href="LlamaGlitch.pde">LlamaGlitch</a> <a href="ByteBeatTune.pde">ByteBeatTune</a> <a href="ToneThing.pde">ToneThing</a> 
+	Source code: <a href="BBPlay.pde">BBPlay</a> <a href="ByteBeatTune.pde">ByteBeatTune</a> <a href="ToneThing.pde">ToneThing</a> 
       </p>
       
       <p>
