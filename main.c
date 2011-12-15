@@ -819,10 +819,8 @@ lastch = ch;
 		handleMouse( ch );
 		handleEditorKey( ch );
 
-		/*
-		if( ch == 'V' ) volumeUp();
-		if( ch == 'v' ) volumeDown();
-		*/
+		if( ch == '}' ) volumeUp();
+		if( ch == '{' ) volumeDown();
 
 		if( ch == '(' ) { speed -= 1;  if( speed < 1 ) speed=1; };
 		if( ch == ')' ) { speed += 1; };

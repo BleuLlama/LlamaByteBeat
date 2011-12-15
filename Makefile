@@ -123,7 +123,6 @@ testa: $(TARG)
 	./$(TARG) Hello!abcdefg!hijklmn!opqrstuvwxyz!12.34.4.5
 
 testb: $(TARG)
-	./$(TARG) -volume 0.1 -novis glitch://glitch4life!a1k1000.8eha80!a80dmlp0k1000.2dh!mr!!e
 	./$(TARG) glitch://genmusic2_atari!a7kaa6kmmAd!aaDka6kmmd
 	./$(TARG) the_42_melody!aAk2Alad
 	./$(TARG) glitch://2muchop!1!0!aFFe6had!!aaadda4eg8k!aada2000eh!a400e3h2fqad80h!0!!2.1.2.1.4.1.2.1!2.1.2.1.4.1.3.2!!a400e10hqFf!q
