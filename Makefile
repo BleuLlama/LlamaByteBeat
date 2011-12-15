@@ -86,9 +86,9 @@ $(TARG): $(OBJS)
 
 
 ################################################################################
-TARGS += simple 
+TARGS += pasimple 
 
-simple: build/simple.o build/paHelper.o
+pasimple: build/simple.o build/paHelper.o
 	@echo link $@
 	@$(CC) $(CFLAGS) $^ $(LDFLAGS) $(LIBS) -o $@
 
@@ -130,4 +130,7 @@ testb: $(TARG)
 	./$(TARG) -volume 0.1 -novis glitch://glitch4life!a1k1000.8eha80!a80dmlp0k1000.2dh!mr!!e
 	
 test: $(TARG)
-	./$(TARG) -volume 0.1 glitch://glitch4life!a1k1000.8eha80!a80dmlp0k1000.2dh!mr!!e
+	./$(TARG) -volume 0.0 -novis glitch://glitch4life!a1k1000.8eha80!a80dmlp0k1000.2dh!mr!!e
+
+testm: $(TARG)
+	./$(TARG) -volume 0.0 -novis glitch://malordy!a40hea2kr

@@ -1,30 +1,154 @@
 
-LlamaBeat
-bytebeat music composition software for your CLI
+LlamaByteBeat
 Scott Lawrence (BleuLlama/@yorgle/yorgle@gmail.com)
 2011-DEC
 
+----------------------------------------
+Overview:
+
+    LlamaByteBeat (lbb) is a command line (curses-based) player,
+    editor, and tool for 'bytebeat' glitch compositions.  These
+    compositions are essentially equations that take in a current
+    timeslice value (t) and have a persistent stack of 256 bytes,
+    and compute the current 8bit (0..255) value to be produced by
+    the audio system.
+
+    For more information about ByteBeat compositions, I recommend
+    kragen's bytebeat page:
+
+	http://canonical.org/~kragen/bytebeat/
+
+
+    lbb's editing facilities are currently being implemented, so
+    don't expect editing to work just yet.  Playback, display, and
+    text output dumps of the glitch: encoded (URI) strings are
+    working great currently.
+
+    The "Player" folder contains the http://processing.org Processing
+    java/web based player.  An example of deployment of this as an
+    applet can be found here:
+
+	http://umlautllama.com/p5/glitch/
+
+
+----------------------------------------
+Building:
 
 Pre-reqs:
 	- C compiler.  Duh.
 	- Curses/NCurses (usually already installed)
-	- PortAudio library installed properly
+	- PortAudio library installed properly (tested against v19 stable)
 		http://www.portaudio.com/
+	- or libSDL library
 
-Get all of that, then just type 'make'
+There is one setting in the makefile to specify whether it's built
+against SDL or PortAudio.  Make sure it's configured for your
+preferred audio system.
 
-You'll end up with some stuff:
+Then just type 'make'
 
-	./simple	portAudio example modified to play a bytebeat tune
-			no visualizer
 
 	./lbb		the gold.  the curses-based app.
 
-Currently, just type ./lb, and you'll see a tune displaying in it.
 
-Future:
+Other targets:
 
-	./lbb glitch://song!aa!Ddad
+	pasimple	portAudio example modified to play a bytebeat tune
+			no visualizer
+			(Be sure to set USEPORTAUDIO to 1 in the Makefile)
 
-or
-	./lbb song!aa!Ddad
+	sdlsimple	libsdl example modified to play a bytebeat tune
+			no visualizer
+			(Be sure to set USESDL to 1 in the Makefile)
+
+
+Pass the glitch on the command line to see/hear it. eg:
+
+	./lbb glitch://foobar!aAbBcCd
+
+
+There are some command line options that will output text, or change the 
+starting state of the interactive lbb.  to see these options:
+
+	./lbb -help
+
+Examples of use:
+
+	./lbb -listing glitch://foobar!aAbBcCd
+
+	./lbb -novis -volume 0.25 glitch://foobar!aAbBcCd
+
+
+----------------------------------------
+Control keys:
+
+    App control:
+
+	}		Volume up by 10%
+	{		Volume down by 10%
+	(		Timeloop factor slower
+	)		Timeloop factor faster
+	v		Next visualizer
+	q		Quit
+
+    Editor positioning:
+
+	UP		Previous editor line
+	DOWN		Next editor line
+	LEFT		Previous editor token on the current line
+	RIGHT		Next editor token on the current line
+	HOME		Start of current line
+	END		End of current line
+
+    Editing:
+
+	BACKSPACE	remove token to the left ("DELETE" on Mac)
+	DELETE		remove token to the right
+
+    Tokens: (on the editing line)
+
+	t		insert t	OP_T
+	u		insert PUT	OP_PUT
+	r		insert DROP	OP_DROP
+
+	*		insert Multiply	OP_MUL
+	/		insert Divide	OP_DIV
+	+		insert Add	OP_ADD
+	-		insert Subtract	OP_SUB
+	%		insert Modulo	OP_MOD
+
+	, 		insert <<	OP_LSHIFT
+	.		insert >>	OP_RSHIFT
+
+	&		insert And	OP_AND
+	|		insert Or	OP_OR
+	^		insert Xor	OP_XOR
+	~		insert Not	OP_NOT
+
+
+	d		insert DUP	OP_DUP
+	p		insert PICK	OP_PICK
+	s		insert SWAP	OP_SWAP
+
+	<		insert Less	OP_LT
+	>		insert Greater	OP_GT
+	=		insert Equal	OP_EQ
+
+
+    Numbers: (on the editing line)
+
+	' '		advance to the next number
+	0..9		append this digit to the current number (decimal)
+
+
+----------------------------------------
+NOTES: (as of 2011-Dec-15)
+
+	- The editor is currently nonfunctional.  It might work,
+	  but it will likely crash and give unexpected results.
+
+	- Saving and Loading are not implemented yet.
+
+	- Some songs may not work properly yet. (eg: malordy)
+
+	- The audio system code can stand to be revisited

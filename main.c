@@ -224,7 +224,7 @@ void initScreen( void )
 	init_pair( kColorFrame, COLOR_BLUE, COLOR_BLUE );
 	init_pair( kColorFrameT, COLOR_CYAN, COLOR_BLACK );
 	init_pair( kColorVisPixel, COLOR_GREEN, COLOR_GREEN );
-	init_pair( kColorLine, COLOR_BLUE, COLOR_BLACK );
+	init_pair( kColorLine, COLOR_WHITE, COLOR_BLACK );
 	init_pair( kColorLineSel, COLOR_YELLOW, COLOR_BLACK );
 	init_pair( kColorVisYel, COLOR_YELLOW, COLOR_YELLOW );
 	init_pair( kColorVisRed, COLOR_RED, COLOR_RED );
@@ -543,7 +543,7 @@ int handleEditorKey( int ch )
 	case( '/' ): glitchInsert( theGlitch, kOP_DIV ); break;
 	case( '+' ): glitchInsert( theGlitch, kOP_ADD ); break;
 	case( '-' ): glitchInsert( theGlitch, kOP_SUB ); break;
-	case( 'm' ): glitchInsert( theGlitch, kOP_MOD ); break;
+	case( '%' ): glitchInsert( theGlitch, kOP_MOD ); break;
 
 	case( ',' ): glitchInsert( theGlitch, kOP_LSHIFT ); break;
 	case( '.' ): glitchInsert( theGlitch, kOP_RSHIFT ); break;
@@ -627,7 +627,7 @@ int handleMouse( int ch )
  */
 void usage( char * pn )
 {
-	fprintf( stderr, "lbb v0.13  2011-Dec-13  Scott Lawrence, yorgle@gmail.com\n" );
+	fprintf( stderr, "lbb v0.14  2011-Dec-14  Scott Lawrence, yorgle@gmail.com\n" );
 	fprintf( stderr, "\n" );
 	fprintf( stderr, "Usage: %s [option] [glitch]\n", pn );
 	fprintf( stderr, "\n" );
