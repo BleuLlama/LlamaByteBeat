@@ -6,8 +6,8 @@ Scott Lawrence (BleuLlama/@yorgle/yorgle@gmail.com)
 ----------------------------------------
 Overview:
 
-    LlamaByteBeat (lbb) is a command line (curses-based) player,
-    editor, and tool for 'bytebeat' glitch compositions.  These
+    LlamaByteBeat (lbb) is a command line (curses-based) player
+    and tool for 'bytebeat' glitch compositions.  These
     compositions are essentially equations that take in a current
     timeslice value (t) and have a persistent stack of 256 bytes,
     and compute the current 8bit (0..255) value to be produced by
@@ -91,7 +91,7 @@ Control keys:
 	v		Next visualizer
 	q		Quit
 
-    Editor positioning:
+    Editor positioning: (NOTE: EDITING IS DISABLED CURRENTLY)
 
 	UP		Previous editor line
 	DOWN		Next editor line

@@ -523,6 +523,7 @@ int handleEditorKey( int ch )
 		glitchCursorMoveEndOfLine( theGlitch );
 		break;
 
+#ifdef ALLOW_EDITING
 	case( KEY_BACKSPACE ):
 	case( 127 ): /* "delete" (backspace) on Mac keyboards */
 		glitchRemovePrevious( theGlitch );
@@ -562,6 +563,7 @@ int handleEditorKey( int ch )
 	case( '=' ): glitchInsert( theGlitch, kOP_EQ ); break;
 
 	case( ' ' ): lastWasDigit = 0; break;
+#endif
 
 	default:
 		ret = 0;
@@ -627,7 +629,7 @@ int handleMouse( int ch )
  */
 void usage( char * pn )
 {
-	fprintf( stderr, "lbb v0.14  2011-Dec-14  Scott Lawrence, yorgle@gmail.com\n" );
+	fprintf( stderr, "lbb v0.16  2011-Dec-16  Scott Lawrence, yorgle@gmail.com\n" );
 	fprintf( stderr, "\n" );
 	fprintf( stderr, "Usage: %s [option] [glitch]\n", pn );
 	fprintf( stderr, "\n" );
