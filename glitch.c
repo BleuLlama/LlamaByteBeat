@@ -250,6 +250,20 @@ char * glitchTokenToString( long t )
 	/* and for completeness... */
 	case( '!' ):	return "\\n";		/* OP_NOP */
 	case( '.' ):	return ".";		/* OP_NOP */
+
+	/* tenative opcodes */
+		/* accelerometer */
+	case ( 'X' ):	return "Xa";		/* OP_ACCX */
+	case ( 'Y' ):	return "Ya";		/* OP_ACCY */
+	case ( 'Z' ):	return "Za";		/* OP_ACCZ */
+
+		/* touch pad 1 */
+	case ( 'x' ):	return "X1";		/* OP_PAD1X */
+	case ( 'y' ):	return "Y1";		/* OP_PAD1X */
+
+		/* touch pad 2 */
+	case ( 'v' ):	return "X2";		/* OP_PAD2X */
+	case ( 'w' ):	return "Y2";		/* OP_PAD2X */
 	}
 	return "?UNK";
 }
@@ -474,6 +488,41 @@ long glitchEvaluate( pGlitch * pg, long t )
 			else glitchPush( pg, 0 );
 			break;
 
+		/* ******* Tentative Opcodes ******* */
+		/* X - OP_ACCX  -- accelerometer */
+		case( 'X' ):
+			glitchPush( pg, (pg->Xa & 0xff) );
+			break;
+			
+		/* Y - OP_ACCY  -- accelerometer */
+		case( 'Y' ):
+			glitchPush( pg, (pg->Ya & 0xff) );
+			break;
+			
+		/* Z - OP_ACCZ  -- accelerometer */
+		case( 'Z' ):
+			glitchPush( pg, (pg->Za & 0xff) );
+			break;
+			
+		/* x - OP_PAD1X  -- touch pad 1 X */
+		case( 'x' ):
+			glitchPush( pg, (pg->X1 & 0xff) );
+			break;
+
+		/* y - OP_PAD1Y  -- touch pad 1 Y */
+		case( 'y' ):
+			glitchPush( pg, (pg->Y1 & 0xff) );
+			break;
+			
+		/* x - OP_PAD2X  -- touch pad 2 X */
+		case( 'v' ):
+			glitchPush( pg, (pg->X2 & 0xff) );
+			break;
+
+		/* y - OP_PAD2Y  -- touch pad 2 Y */
+		case( 'w' ):
+			glitchPush( pg, (pg->Y2 & 0xff) );
+			break;
 
 		default:
 			/* it's a number, just push it */

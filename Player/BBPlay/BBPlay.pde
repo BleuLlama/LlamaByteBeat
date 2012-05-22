@@ -2,7 +2,7 @@
 //
 //  Java player for bytebeat tunes
 //
-//  2011 Scott Lawrence (BleuLlama/@Yorgle)
+//  2011,2012 Scott Lawrence (BleuLlama/@Yorgle)
 //  yorgle@gmail.com
 //
 //  This is released under an MIT license.
@@ -14,6 +14,7 @@
 // 1.04 -            updated the font to "Ready-P9", removed others
 // 1.05 -            typo with ^/~ fixed
 // 1.06 - 2011/13/10 Stack issues fixed, no longer requires glitch://, OP_DROP added (b)
+// 1.07 - 2012/05/22 Added pad and accelerometer support
 
 import ddf.minim.*;
 import ddf.minim.signals.*;
@@ -22,6 +23,7 @@ import ddf.minim.signals.*;
 String[] algos = 
   { 
     // some of scott's discoveries
+    "padTest!avl!awd!f",
     "guitar2!a3kal!a3000h400sl!80qD0h3d!ff4eFFl!pp",
     "glitch://Jenny!363.14BD",
     "glitch://fun!a309hamag",
@@ -69,8 +71,11 @@ long t;
 boolean drawVol = false;
 int vis = 1;
 
+int Xa, Ya, Za;
+int X1, Y1, X2, Y2;
+
 int versionShow;
-String versionText = "v1.05 2011-Dec-13\n\nScott Lawrence\n\nyorgle@gmail.com\n\ntwitter.com/@yorgle";
+String versionText = "v1.07 2012-May-22\n\nScott Lawrence\n\nyorgle@gmail.com\n\ntwitter.com/@yorgle";
 
 /////////////////////////////////////////////
 
@@ -137,6 +142,11 @@ void selectAlgo( int a )
   tt.setBBT( bbt );
   out.addSignal( tt );
   currentAlgo = a;
+  
+  // update pads
+  tt.updateAcc( Xa, Ya, Za );
+  tt.updatePad1( X1, Y1 );
+  tt.updatePad2( X2, Y2 );
 }
 
 void selectNextAlgo()
@@ -349,26 +359,46 @@ void draw()
     fill( 255 );
     text( versionText, 128, 128 );
   }
+  
+  // draw pad dots
+  
+  noStroke();
+  fill( 255, 64 );
+  ellipseMode( CENTER );
+  ellipse( X1, Y1, 10, 10 );
+  ellipse( X2 + width/2, Y2, 10, 10 );
 }
 
 /////////////////////////////////////////////
 
-
 void mouseDragged()
-{
+{ 
+  // check for volume
   if( mouseY < 0 || mouseY > height ) {
     drawVol = false;
-    return;
   }
   
-  if( mouseX > width - 20 && mouseX < width) {
-    float v = 1.0 - (float(mouseY) / float(height));
-    if( v<0 ) { v = 0.0; }
-    if( v>1.0 ) { v = 1.0; }
-    tt.volume = v;
-    drawVol = true;
+  if( drawVol ) {
+    if( mouseX > width - 20 && mouseX < width) {
+      float v = 1.0 - (float(mouseY) / float(height));
+      if( v<0 ) { v = 0.0; }
+      if( v>1.0 ) { v = 1.0; }
+      tt.volume = v;
+      drawVol = true;
+    } else {
+      drawVol = false;
+    }
+  }
+  
+  // okay, handle pad stuff
+  if( mouseX < (width/2) ) {
+    X1 = int( float(mouseX)/float(width/2) * 255.0 );
+    Y1 = int( float(mouseY)/float(height) * 255.0 );
+    tt.updatePad1( X1, Y1 );
   } else {
-    drawVol = false;
+    X2 = int( float(mouseX - (width/2))/float(width/2) * 255.0 );
+    Y2 = int( float(mouseY)/float(height) * 255.0 );
+    tt.updatePad2( X2, Y2 );
   }
 }
 

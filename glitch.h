@@ -59,6 +59,11 @@ typedef struct pGlitch {
 	int tokensPerLine[kGlitchMaxLines];
 	int cursorLine;
 	int cursorPos;
+
+	/* for variables */
+	int Xa, Ya, Za;
+	int X1, Y1;		/* pad 1 */
+	int X2, Y2;		/* pad 2 */
 } pGlitch;
 
 
@@ -85,6 +90,15 @@ typedef struct pGlitch {
 #define kOP_EQ		(-1 * 'u')
 #define kOP_NEWLINE	(-1 * '!')
 #define kOP_NUMNOP	(-1 * '.')
+
+/* tentative opcodes */
+#define kOP_ACCX	(-1 * 'X')	/* accelerometer */
+#define kOP_ACCY	(-1 * 'Y')
+#define kOP_ACCZ	(-1 * 'Z')
+#define kOP_PAD1X	(-1 * 'x')	/* touch pad 1 */
+#define kOP_PAD1Y	(-1 * 'y')	
+#define kOP_PAD2X	(-1 * 'v')	/* touch pad 2 */
+#define kOP_PAD2Y	(-1 * 'w')
 
 
 /* glitchDestroy

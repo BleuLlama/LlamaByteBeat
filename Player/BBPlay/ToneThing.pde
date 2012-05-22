@@ -24,6 +24,26 @@ class ToneThing implements AudioSignal
     ticks = 0;
   }
   
+  void updateAcc( int x, int y, int z)
+  {
+    bbt.Xa = x;
+    bbt.Ya = y;
+    bbt.Za = z;
+  }
+
+  void updatePad1( int x, int y )
+  {
+    bbt.X1 = x;
+    bbt.Y1 = y;
+  }
+
+  void updatePad2( int x, int y )
+  {
+    bbt.X2 = x;
+    bbt.Y2 = y;
+  }
+
+  
   void setBBT( ByteBeatTune pbbt )
   {
     bbt = pbbt;

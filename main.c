@@ -490,6 +490,15 @@ void showEdit( int mx, int my )
 
 int lastWasDigit = 0;
 
+
+int constrainV( int old, int delta ) 
+{
+	old += delta;
+	if( old < 0 ) old = 0;
+	if( old > 255 ) old = 255;
+	return old;
+}
+
 /* handleEditorKey
  *
  *	handle key input for the editor fields
@@ -570,6 +579,7 @@ int handleEditorKey( int ch )
 		break;
 	}
 	
+#ifdef ALLOW_EDITING
 	if( ch >='0' && ch <='9' )
 	{
 		if( lastWasDigit ) {
@@ -578,6 +588,23 @@ int handleEditorKey( int ch )
 			glitchInsert( theGlitch, ch - '0' );
 		}
 		lastWasDigit = 1;
+	}
+#endif
+
+	if( theGlitch ) {
+		/* pad sim */
+		switch( ch ) {
+			case( 'w' ): theGlitch->X1 = constrainV( theGlitch->X1, -10 ); break;
+			case( 's' ): theGlitch->X1 = constrainV( theGlitch->X1,  10 ); break;
+			case( 'a' ): theGlitch->Y1 = constrainV( theGlitch->Y1, -10 ); break;
+			case( 'd' ): theGlitch->Y1 = constrainV( theGlitch->Y1,  10 ); break;
+
+			case( 'W' ): theGlitch->X2 = constrainV( theGlitch->X2, -10 ); break;
+			case( 'S' ): theGlitch->X2 = constrainV( theGlitch->X2,  10 ); break;
+			case( 'A' ): theGlitch->Y2 = constrainV( theGlitch->Y2, -10 ); break;
+			case( 'D' ): theGlitch->Y2 = constrainV( theGlitch->Y2,  10 ); break;
+			default: break;
+		}
 	}
 
 	return ret;

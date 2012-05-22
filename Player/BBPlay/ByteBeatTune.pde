@@ -21,6 +21,9 @@ class ByteBeatTune
   int maxSz = 512;
   int nTokens = 0;
 
+  int Xa,Ya,Za;
+  int X1,Y1;
+  int X2,Y2;
   
   ByteBeatTune( String t )
   {
@@ -181,6 +184,14 @@ class ByteBeatTune
         else if( p[pp].equals("s") ) { description[l] += "< "; }
         else if( p[pp].equals("t") ) { description[l] += "> "; }
         else if( p[pp].equals("u") ) { description[l] += "= "; }
+
+        else if( p[pp].equals("v") ) { description[l] += "X2 "; }
+        else if( p[pp].equals("w") ) { description[l] += "Y2 "; }
+        else if( p[pp].equals("x") ) { description[l] += "X1 "; }
+        else if( p[pp].equals("y") ) { description[l] += "Y1 "; }
+        else if( p[pp].equals("X") ) { description[l] += "Xa "; }
+        else if( p[pp].equals("Y") ) { description[l] += "Ya "; }
+        else if( p[pp].equals("Z") ) { description[l] += "Za "; }
         
         else {
           // number
@@ -214,6 +225,15 @@ class ByteBeatTune
       if( token != null ) {
         //print( token );
         if( token.matches( "[a-z!]" )) {
+          
+          if( token.equals( "v" )){  push( X2 ); }
+          if( token.equals( "w" )){  push( Y2 ); }
+          if( token.equals( "x" )){  push( X1 ); }
+          if( token.equals( "y" )){  push( Y1 ); }
+          if( token.equals( "X" )){  push( Xa ); }
+          if( token.equals( "Y" )){  push( Ya ); }
+          if( token.equals( "Z" )){  push( Za ); }
+          
           if( token.equals( "a" )){  push( t ); }
           if( token.equals( "c" )){  a=pop(); } // c - drop
           if( token.equals( "d" )){  a=pop(); b=pop(); push( b*a ); }                                   // d  *
